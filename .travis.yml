@@ -1,0 +1,19 @@
+language: python
+sudo: false
+
+matrix:
+    include:
+        - python: 2.7
+        - python: 3.4
+
+install:
+   - pip install -r dev_requirements.txt;
+   - python setup.py develop
+
+script:
+  - coverage run -m haas tateru
+  - coverage report
+
+notifications:
+  email:
+    - cournape@gmail.com
