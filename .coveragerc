@@ -1,0 +1,6 @@
+[report]
+omit = */tests/*
+
+[run]
+branch = True
+source = zipfile2
