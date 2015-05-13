@@ -7,5 +7,10 @@ backward compatible replacement.
 Improvements compared to upstream zipfile stdlib:
 
 * Handling of symlinks
-* Raises an exception by default when writing an already existing archive
 * Compatible 2.6 onwards (including 3.x)
+
+Incoming:
+
+* Raises an exception by default when writing an already existing archive
+* Special class to limit number of members in an archive when unzipping,
+  to avoid DDos attacks using dummy zipfiles.
