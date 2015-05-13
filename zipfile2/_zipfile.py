@@ -2,12 +2,15 @@ from __future__ import absolute_import
 
 import os
 import shutil
+import stat
 import string
+import sys
 import zipfile
 
 from six import text_type
 
 
+IS_BELOW_PY27 = sys.version_info[:2] < (2, 7)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
 
@@ -23,6 +26,18 @@ class ZipFile(zipfile.ZipFile):
 
     This also support context management on 2.6.
     """
+    def __init__(self, file, mode='r', compression=zipfile.ZIP_STORED,
+                 allowZip64=True, low_level=False):
+        # stdlib ZipFile is old-style class on 2.6
+        if IS_BELOW_PY27:
+            zipfile.ZipFile.__init__(self, file, mode, compression, allowZip64)
+        else:
+            super(ZipFile, self).__init__(file, mode, compression, allowZip64)
+
+        self.low_level = low_level
+
+       # Set of filenames currently in file
+        self._filenames_set = set()
 
     def extract_to(self, member, destination, path=None, pwd=None):
         if not isinstance(member, zipfile.ZipInfo):
@@ -32,6 +47,46 @@ class ZipFile(zipfile.ZipFile):
             path = os.getcwd()
 
         return self._extract_member_to(member, destination, path, pwd)
+
+    def write(self, filename, arcname=None, compress_type=None):
+        if arcname is None:
+            arcname = filename
+        arcname = os.path.normpath(os.path.splitdrive(arcname)[1])
+        while arcname[0] in (os.sep, os.altsep):
+            arcname = arcname[1:]
+
+        st = os.stat(filename)
+        isdir = stat.S_ISDIR(st.st_mode)
+        if isdir:
+            arcname += '/'
+
+        if arcname in self._filenames_set and not self.low_level:
+             msg = "{0!r} is already in archive (as {1!r})".format(filename,
+                                                                   arcname)
+             raise ValueError(msg)
+        else:
+            self._filenames_set.add(arcname)
+            if IS_BELOW_PY27:
+                zipfile.ZipFile.write(self, filename, arcname, compress_type)
+            else:
+                super(ZipFile, self).write(filename, arcname, compress_type)
+
+    def writestr(self, zinfo_or_arcname, bytes, compress_type=None):
+        if not isinstance(zinfo_or_arcname, zipfile.ZipInfo):
+            arcname = zinfo_or_arcname
+        else:
+            arcname = zinfo_or_arcname.arcname
+
+        if arcname in self._filenames_set and not self.low_level:
+             msg = "{0!r} is already in archive".format(arcname)
+             raise ValueError(msg)
+        else:
+            self._filenames_set.add(arcname)
+            if IS_BELOW_PY27:
+                zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
+            else:
+                super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
+                                              compress_type)
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd):
