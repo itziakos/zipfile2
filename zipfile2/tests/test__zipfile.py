@@ -182,3 +182,60 @@ class TestZipFile(unittest.TestCase):
             "EGG-INFO/usr/lib/vtk-5.10/libvtkViews.so"
         )
         self.assertTrue(os.path.islink(path))
+
+    def test_multiple_archives_write(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        to = os.path.join(self.tempdir, "to")
+
+        # When
+        with ZipFile(zipfile, "w") as zp:
+            zp.write(__file__, "file.py")
+            with self.assertRaises(ValueError):
+                zp.write(__file__, "file.py")
+
+        with ZipFile(zipfile) as zp:
+            zp.extractall(to)
+
+        # Then
+        self.assertTrue(os.path.exists(zipfile))
+        self.assertTrue(os.path.exists(os.path.join(to, "file.py")))
+
+    def test_multiple_archives_writestr(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        to = os.path.join(self.tempdir, "to")
+
+        # When
+        with ZipFile(zipfile, "w") as zp:
+            zp.writestr("file.py", b"data")
+            with self.assertRaises(ValueError):
+                zp.writestr("file.py", b"dato")
+
+        with ZipFile(zipfile) as zp:
+            data = zp.extract("file.py")
+
+        # Then
+        self.assertTrue(os.path.exists(zipfile))
+        self.assertTrue(data, b"data")
+
+    def test_multiple_archives_read(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        to = os.path.join(self.tempdir, "to")
+
+        # When
+        with ZipFile(zipfile, "w", low_level=True) as zp:
+            zp.writestr("file.py", b"data")
+            zp.writestr("file.py", b"dato")
+
+        # Then
+        # ensure we have indeed two members with archive name file.py
+        with ZipFile(zipfile, low_level=True) as zp:
+            self.assertEqual(len(zp.namelist()), 2)
+
+        # ensure we raise an error if duplicates
+        with self.assertRaises(ValueError):
+            with ZipFile(zipfile) as zp:
+                pass
+            print(zp.closed)
