@@ -5,6 +5,7 @@ import shutil
 import stat
 import string
 import sys
+import time
 import zipfile
 
 
@@ -91,7 +92,10 @@ class ZipFile(zipfile.ZipFile):
                                                                   arcname)
             raise ValueError(msg)
         elif stat.S_ISLNK(st.st_mode):
-            zip_info = zipfile.ZipInfo(filename)
+            mtime = time.localtime(st.st_mtime)
+            date_time = mtime[0:6]
+
+            zip_info = zipfile.ZipInfo(arcname, date_time)
             zip_info.create_system = 3
             zip_info.external_attr = ZIP_SOFTLINK_ATTRIBUTE_MAGIC
             self.writestr(zip_info, os.readlink(filename))
