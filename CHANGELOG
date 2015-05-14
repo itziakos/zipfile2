@@ -3,7 +3,7 @@ XXXX-XX-XX   0.0.5:
 
 Bug fixes:
 
-  * fix the code to run on python [2.7.0, 2.7.3] (#6)
+  * fix the code to run on python [2.7.0, 2.7.3] (#8)
 
 2015-05-14   0.0.4:
 -------------------
