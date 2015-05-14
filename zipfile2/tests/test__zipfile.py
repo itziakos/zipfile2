@@ -84,7 +84,8 @@ class TestZipFile(unittest.TestCase):
             os.path.join("EGG-INFO", "PKG-INFO"),
             os.path.join("EGG-INFO", "spec", "depend"),
             os.path.join("EGG-INFO", "spec", "summary"),
-            os.path.join("EGG-INFO", "usr", "share", "man", "man1", "nosetests.1"),
+            os.path.join("EGG-INFO", "usr", "share", "man", "man1",
+                         "nosetests.1"),
         ]
 
         # When
@@ -149,23 +150,20 @@ class TestZipFile(unittest.TestCase):
             os.path.join('EGG-INFO', 'inst', 'targets.dat'),
             os.path.join('EGG-INFO', 'inst', 'files_to_install.txt'),
             os.path.join('EGG-INFO', 'usr', 'lib', 'vtk-5.10',
-                'libvtkViews.so.5.10.1'
-            ),
+                         'libvtkViews.so.5.10.1'),
             os.path.join('EGG-INFO', 'usr', 'lib', 'vtk-5.10',
-                'libvtkViews.so.5.10'
-            ),
+                         'libvtkViews.so.5.10'),
             os.path.join('EGG-INFO', 'usr', 'lib', 'vtk-5.10',
-                'libvtkViews.so'
-            ),
+                         'libvtkViews.so'),
             os.path.join('EGG-INFO', 'spec', 'lib-provide'),
             os.path.join('EGG-INFO', 'spec', 'depend'),
             os.path.join('EGG-INFO', 'spec', 'lib-depend'),
             os.path.join('EGG-INFO', 'spec', 'summary'),
         ]
 
-        existing_link = os.path.join(self.tempdir, 
-            'EGG-INFO/usr/lib/vtk-5.10/libvtkViews.so'
-        )
+        existing_link = os.path.join(self.tempdir,
+                                     'EGG-INFO/usr/lib/vtk-5.10/'
+                                     'libvtkViews.so')
         create_broken_symlink(existing_link)
 
         # When
@@ -176,8 +174,7 @@ class TestZipFile(unittest.TestCase):
         # Then
         self.assertCountEqual(files, expected_files)
         path = os.path.join(self.tempdir,
-            "EGG-INFO/usr/lib/vtk-5.10/libvtkViews.so"
-        )
+                            "EGG-INFO/usr/lib/vtk-5.10/libvtkViews.so")
         self.assertTrue(os.path.islink(path))
 
     def test_multiple_archives_write(self):
@@ -201,7 +198,6 @@ class TestZipFile(unittest.TestCase):
     def test_multiple_archives_writestr(self):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
-        to = os.path.join(self.tempdir, "to")
 
         # When
         with ZipFile(zipfile, "w") as zp:
@@ -219,7 +215,6 @@ class TestZipFile(unittest.TestCase):
     def test_multiple_archives_read(self):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
-        to = os.path.join(self.tempdir, "to")
 
         # When
         with ZipFile(zipfile, "w", low_level=True) as zp:

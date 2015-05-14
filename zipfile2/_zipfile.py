@@ -87,9 +87,9 @@ class ZipFile(zipfile.ZipFile):
             arcname += '/'
 
         if arcname in self._filenames_set and not self.low_level:
-             msg = "{0!r} is already in archive (as {1!r})".format(filename,
-                                                                   arcname)
-             raise ValueError(msg)
+            msg = "{0!r} is already in archive (as {1!r})".format(filename,
+                                                                  arcname)
+            raise ValueError(msg)
         elif stat.S_ISLNK(st.st_mode):
             zip_info = zipfile.ZipInfo(filename)
             zip_info.create_system = 3
@@ -109,8 +109,8 @@ class ZipFile(zipfile.ZipFile):
             arcname = zinfo_or_arcname.filename
 
         if arcname in self._filenames_set and not self.low_level:
-             msg = "{0!r} is already in archive".format(arcname)
-             raise ValueError(msg)
+            msg = "{0!r} is already in archive".format(arcname)
+            raise ValueError(msg)
         else:
             self._filenames_set.add(arcname)
             if IS_BELOW_PY27:
@@ -121,7 +121,8 @@ class ZipFile(zipfile.ZipFile):
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd):
-        return self._extract_member_to(member, member.filename, targetpath, pwd)
+        return self._extract_member_to(member, member.filename,
+                                       targetpath, pwd)
 
     def _extract_symlink(self, member, link_name, pwd=None):
         source = self.read(member).decode("utf8")
@@ -147,7 +148,8 @@ class ZipFile(zipfile.ZipFile):
         # UNC path, redundant separators, "." and ".." components.
         arcname = os.path.splitdrive(arcname)[1]
         arcname = os.path.sep.join(x for x in arcname.split(os.path.sep)
-                                   if x not in ('', os.path.curdir, os.path.pardir))
+                                   if x not in ('', os.path.curdir,
+                                                os.path.pardir))
         if os.path.sep == '\\':
             # filter illegal characters on Windows
             illegal = ':<>|"?*'
