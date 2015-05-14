@@ -18,7 +18,7 @@ else:
     string_types = str,
     text_type = str
 
-IS_BELOW_PY27 = sys.version_info[:2] < (2, 7)
+IS_ZIPFILE_OLD_STYLE_CLASS = sys.version_info[:3] < (2, 7, 4)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
 
@@ -50,8 +50,7 @@ class ZipFile(zipfile.ZipFile):
             If False, will raise an error when adding an already existing
             archive.
         """
-        # stdlib ZipFile is old-style class on 2.6
-        if IS_BELOW_PY27:
+        if IS_ZIPFILE_OLD_STYLE_CLASS:
             zipfile.ZipFile.__init__(self, file, mode, compression, allowZip64)
         else:
             super(ZipFile, self).__init__(file, mode, compression, allowZip64)
@@ -100,7 +99,7 @@ class ZipFile(zipfile.ZipFile):
             zip_info.external_attr = ZIP_SOFTLINK_ATTRIBUTE_MAGIC
             self.writestr(zip_info, os.readlink(filename))
         else:
-            if IS_BELOW_PY27:
+            if IS_ZIPFILE_OLD_STYLE_CLASS:
                 zipfile.ZipFile.write(self, filename, arcname, compress_type)
             else:
                 super(ZipFile, self).write(filename, arcname, compress_type)
@@ -117,7 +116,7 @@ class ZipFile(zipfile.ZipFile):
             raise ValueError(msg)
         else:
             self._filenames_set.add(arcname)
-            if IS_BELOW_PY27:
+            if IS_ZIPFILE_OLD_STYLE_CLASS:
                 zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
             else:
                 super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
