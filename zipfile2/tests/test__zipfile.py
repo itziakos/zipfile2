@@ -238,4 +238,35 @@ class TestZipFile(unittest.TestCase):
         with self.assertRaises(ValueError):
             with ZipFile(zipfile) as zp:
                 pass
-            print(zp.closed)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_write_symlink(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        real_file = os.path.join(self.tempdir, "foo.txt")
+        symlink = os.path.join(self.tempdir, "symlink")
+        extract_dir = os.path.join(self.tempdir, "to")
+
+        with open(real_file, "wb") as fp:
+            fp.write(b"data")
+        os.symlink(real_file, symlink)
+
+        os.makedirs(extract_dir)
+
+        # When
+        with ZipFile(zipfile, "w") as zp:
+            zp.write(symlink)
+            zp.write(real_file)
+
+        with ZipFile(zipfile) as zp:
+            zp.extractall(extract_dir)
+
+        # Then
+        with ZipFile(zipfile) as zp:
+            self.assertEqual(len(zp.namelist()), 2)
+
+        self.assertTrue(os.path.exists(real_file))
+        self.assertFalse(os.path.islink(real_file))
+        self.assertTrue(os.path.exists(symlink))
+        self.assertTrue(os.path.islink(symlink))
