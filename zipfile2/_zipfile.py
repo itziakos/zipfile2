@@ -7,8 +7,15 @@ import string
 import sys
 import zipfile
 
-from six import text_type
 
+PY2 = sys.version_info[0] == 2
+
+if PY2:
+    string_types = basestring,
+    text_type = unicode
+else:
+    string_types = str,
+    text_type = str
 
 IS_BELOW_PY27 = sys.version_info[:2] < (2, 7)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000

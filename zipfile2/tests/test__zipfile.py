@@ -7,17 +7,6 @@ import shutil
 import sys
 import tempfile
 
-PY2 = sys.version_info[0] == 2
-
-if PY2:
-    import StringIO
-    BytesIO = StringIO.StringIO
-    string_types = basestring,
-else:
-    import io
-    BytesIO = io.BytesIO
-    string_types = str,
-
 if sys.version_info[:2] < (2, 7):
     import unittest2 as unittest
 else:
@@ -25,6 +14,14 @@ else:
 
 from zipfile2 import ZipFile
 
+from .._zipfile import PY2, string_types
+
+if PY2:
+    import StringIO
+    BytesIO = StringIO.StringIO
+else:
+    import io
+    BytesIO = io.BytesIO
 
 SUPPORT_SYMLINK = hasattr(os, "symlink")
 
