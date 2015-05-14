@@ -264,3 +264,41 @@ class TestZipFile(unittest.TestCase):
 
         self.assertFalse(os.path.islink(r_real_file))
         self.assertTrue(os.path.islink(r_symlink))
+        self.assertTrue(os.readlink(r_symlink), r_real_file)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_write_symlink_directory(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        real_file = os.path.join(self.tempdir, "include", "foo.h")
+        symlink = os.path.join(self.tempdir, "HEADERS")
+
+        os.makedirs(os.path.dirname(real_file))
+        with open(real_file, "wb") as fp:
+            fp.write(b"/* header */")
+        os.symlink(os.path.dirname(real_file), symlink)
+
+        extract_dir = os.path.join(self.tempdir, "to")
+        os.makedirs(extract_dir)
+
+        r_real_file = os.path.join(extract_dir, "include", "foo.h")
+        r_symlink = os.path.join(extract_dir, "HEADERS")
+
+        # When
+        with ZipFile(zipfile, "w") as zp:
+            zp.write(symlink, "HEADERS")
+            zp.write(real_file, "include/foo.h")
+
+        with ZipFile(zipfile) as zp:
+            zp.extractall(extract_dir)
+
+        # Then
+        with ZipFile(zipfile) as zp:
+            self.assertEqual(len(zp.namelist()), 2)
+            self.assertCountEqual(zp.namelist(), ("include/foo.h", "HEADERS"))
+
+        self.assertFalse(os.path.islink(r_real_file))
+        self.assertTrue(os.path.islink(r_symlink))
+        self.assertTrue(os.path.isdir(r_symlink))
+        self.assertTrue(os.readlink(r_symlink), r_real_file)
