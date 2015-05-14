@@ -28,6 +28,20 @@ class ZipFile(zipfile.ZipFile):
     """
     def __init__(self, file, mode='r', compression=zipfile.ZIP_STORED,
                  allowZip64=True, low_level=False):
+        """ Open the ZIP file.
+
+        Parameters
+        ----------
+        file: str
+            Filename
+        mode: str
+            'r' for read, 'w' for write, 'a' for append
+        compression: int
+            Which compression method to use.
+        low_level: bool
+            If False, will raise an error when adding an already existing
+            archive.
+        """
         # stdlib ZipFile is old-style class on 2.6
         if IS_BELOW_PY27:
             zipfile.ZipFile.__init__(self, file, mode, compression, allowZip64)
@@ -36,8 +50,13 @@ class ZipFile(zipfile.ZipFile):
 
         self.low_level = low_level
 
-       # Set of filenames currently in file
-        self._filenames_set = set()
+        # Set of filenames currently in file
+        members = self.namelist()
+        self._filenames_set = set(members)
+        if len(self._filenames_set) != len(members) and not self.low_level:
+            msg = ("Duplicate members in zip archive detected. If you "
+                   "want to support this, use low_level=True.")
+            raise ValueError(msg)
 
     def extract_to(self, member, destination, path=None, pwd=None):
         if not isinstance(member, zipfile.ZipInfo):
