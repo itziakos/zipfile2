@@ -1,3 +1,9 @@
+2015-05-14   0.0.2:
+-------------------
+
+  * support for writing symlinks in the write method
+  * fix writestr when argument is a ZipInfo instance
+
 2015-05-14   0.0.1:
 -------------------
 
