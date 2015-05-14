@@ -74,27 +74,32 @@ class ZipFile(zipfile.ZipFile):
         while arcname[0] in (os.sep, os.altsep):
             arcname = arcname[1:]
 
-        st = os.stat(filename)
-        isdir = stat.S_ISDIR(st.st_mode)
-        if isdir:
+        st = os.lstat(filename)
+
+        if stat.S_ISDIR(st.st_mode):
             arcname += '/'
 
         if arcname in self._filenames_set and not self.low_level:
              msg = "{0!r} is already in archive (as {1!r})".format(filename,
                                                                    arcname)
              raise ValueError(msg)
+        elif stat.S_ISLNK(st.st_mode):
+            zip_info = zipfile.ZipInfo(filename)
+            zip_info.create_system = 3
+            zip_info.external_attr = ZIP_SOFTLINK_ATTRIBUTE_MAGIC
+            self.writestr(zip_info, os.readlink(filename))
         else:
-            self._filenames_set.add(arcname)
             if IS_BELOW_PY27:
                 zipfile.ZipFile.write(self, filename, arcname, compress_type)
             else:
                 super(ZipFile, self).write(filename, arcname, compress_type)
+            self._filenames_set.add(arcname)
 
     def writestr(self, zinfo_or_arcname, bytes, compress_type=None):
         if not isinstance(zinfo_or_arcname, zipfile.ZipInfo):
             arcname = zinfo_or_arcname
         else:
-            arcname = zinfo_or_arcname.arcname
+            arcname = zinfo_or_arcname.filename
 
         if arcname in self._filenames_set and not self.low_level:
              msg = "{0!r} is already in archive".format(arcname)
