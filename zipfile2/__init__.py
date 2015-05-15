@@ -10,8 +10,9 @@ except ImportError:
 
 from .common import TooManyFiles
 from ._zipfile import ZipFile
+from ._lean_zipfile import LeanZipFile
 
 __all__ = [
-    "__git_revision__", "__is_released__", "__version__", "TooManyFiles",
-    "ZipFile"
+    "__git_revision__", "__is_released__", "__version__", "LeanZipFile",
+    "TooManyFiles", "ZipFile"
 ]

@@ -76,7 +76,20 @@ if sys.version_info[:2] < (2, 7):
 
 
 class LeanZipFile(object):
+    """ A limited but memory efficient zipfile reader.
 
+    This class has 2 main features:
+
+        * the list of archives is not created explicitly at construction
+          time.
+        * it will raise an error when iterating over archives with more
+          than a given number of members.
+
+    The stdlib ZipFile class creates a list of all the archives in the
+    constructor. This may cause issues in situations where you don't want
+    to use too much memory, or when you need to handle arbitrary zip files
+    (e.g. in a server).
+    """
     def __init__(self, filename, max_file_count=100000):
         self.filename = filename
         self.fp = open(filename, 'rb')
