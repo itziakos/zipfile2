@@ -48,7 +48,7 @@ class TestLeanZipFile(unittest.TestCase):
         self.assertEqual(zinfos[0].filename, "EGG-INFO/spec/depend")
         self.assertEqual(zinfos[1].filename, "EGG-INFO/spec/summary")
 
-    def test_read(self):
+    def test_read_from_zinfo(self):
         # Given
         path = NOSE_EGG
 
@@ -59,3 +59,19 @@ class TestLeanZipFile(unittest.TestCase):
 
         # Then
         self.assertEqual(data, NOSE_SPEC_DEPEND.encode())
+
+    def test_read_from_name(self):
+        # Given
+        path = NOSE_EGG
+
+        # When
+        with LeanZipFile(path) as z:
+            data = z.read("EGG-INFO/spec/depend")
+
+        # Then
+        self.assertEqual(data, NOSE_SPEC_DEPEND.encode())
+
+        # When/Then
+        with self.assertRaises(KeyError):
+            with LeanZipFile(path) as z:
+                data = z.read("nono")

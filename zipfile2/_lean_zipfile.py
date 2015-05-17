@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import struct
 import sys
 
-from .common import PY2, BytesIO
+from .common import PY2, BytesIO, string_types
 
 if PY2:
     MAX_EXTRACT_VERSION = 63
@@ -239,7 +239,31 @@ class LeanZipFile(object):
         else:
             return ZipExtFile(zef_file, 'r', zinfo, None, close_fileobj=False)
 
-    def read(self, zinfo):
-        """Return file bytes (as a string) for the given ZipInfo object."""
+    def read(self, zinfo_or_name):
+        """Return file bytes (as a string) for the given ZipInfo object.
+
+        Parameters
+        ----------
+        zinfo_or_name: str
+            If a string, understood as the full path to the archive name.
+            Otherwise, is interpreted as a ZipInfo instance.
+
+        Note
+        ----
+        Will raise an error if more than one member is found with the
+        given name.
+        """
+        if isinstance(zinfo_or_name, string_types):
+            candidates = list(self.get_zip_infos(zinfo_or_name))
+            if len(candidates) < 1:
+                msg = "There is no item named {0!r} found in the archive"
+                raise KeyError(msg.format(zinfo_or_name))
+            elif len(candidates) > 1:
+                msg = ("There is more than one item named {0!r} found in "
+                       "the archive.")
+                raise ValueError(msg.format(zinfo_or_name))
+            zinfo = candidates[0]
+        else:
+            zinfo = zinfo_or_name
         with self.open(zinfo) as fp:
             return fp.read()
