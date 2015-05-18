@@ -8,15 +8,8 @@ import sys
 import time
 import zipfile
 
+from .common import text_type
 
-PY2 = sys.version_info[0] == 2
-
-if PY2:
-    string_types = basestring,
-    text_type = unicode
-else:
-    string_types = str,
-    text_type = str
 
 IS_ZIPFILE_OLD_STYLE_CLASS = sys.version_info[:3] < (2, 7, 4)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000

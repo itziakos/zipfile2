@@ -14,7 +14,8 @@ else:
 
 from zipfile2 import ZipFile
 
-from .._zipfile import PY2, string_types
+from ..common import PY2, string_types
+from .common import NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK
 
 if PY2:
     import StringIO
@@ -26,10 +27,6 @@ else:
 SUPPORT_SYMLINK = hasattr(os, "symlink")
 
 HERE = os.path.dirname(__file__)
-
-NOSE_EGG = os.path.join(HERE, "data", "nose.egg")
-VTK_EGG = os.path.join(HERE, "data", "vtk.egg")
-ZIP_WITH_SOFTLINK = os.path.join(HERE, "data", "zip_with_softlink.zip")
 
 
 def list_files(top):
