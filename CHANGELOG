@@ -3,7 +3,8 @@
 
 New feature:
 
-  * Backport the LeanZipFile feature from brood
+  * Add the LeanZipFile class to allow querying large zipfiles without using
+  too much memory.
 
 2015-05-14   0.0.5:
 -------------------
