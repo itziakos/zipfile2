@@ -75,3 +75,24 @@ class TestLeanZipFile(unittest.TestCase):
         with self.assertRaises(KeyError):
             with LeanZipFile(path) as z:
                 data = z.read("nono")
+
+    def test_context_manager(self):
+        # Given
+        path = NOSE_EGG
+
+        # When/Then
+        with LeanZipFile(path) as zp:
+            self.assertIsNotNone(zp.fp)
+
+        # Then
+        self.assertIsNone(zp.fp)
+
+        # When/Then
+        try:
+            with LeanZipFile(path) as zp:
+                raise ValueError("I am failing !")
+        except ValueError:
+            pass
+
+        # Then
+        self.assertIsNone(zp.fp)
