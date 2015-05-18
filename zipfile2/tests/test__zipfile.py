@@ -299,3 +299,24 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.islink(r_symlink))
         self.assertTrue(os.path.isdir(r_symlink))
         self.assertTrue(os.readlink(r_symlink), r_real_file)
+
+    def test_context_manager(self):
+        # Given
+        path = NOSE_EGG
+
+        # When/Then
+        with ZipFile(path) as zp:
+            self.assertIsNotNone(zp.fp)
+
+        # Then
+        self.assertIsNone(zp.fp)
+
+        # When/Then
+        try:
+            with ZipFile(path) as zp:
+                raise ValueError("I am failing !")
+        except ValueError:
+            pass
+
+        # Then
+        self.assertIsNone(zp.fp)
