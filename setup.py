@@ -101,7 +101,16 @@ def main():
             "zipfile2.tests": ["data/*.zip", "data/*egg"],
         },
         version=__version__,
-        license="BSD",
+        license="PSFL",
+        classifiers=[
+            "Development Status :: 3 - Alpha",
+            "License :: OSI Approved :: Python Software Foundation License",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python :: 2.6",
+            "Programming Language :: Python :: 2.7",
+            "Programming Language :: Python :: 3.3",
+            "Programming Language :: Python :: 3.4",
+        ]
     )
 
 
