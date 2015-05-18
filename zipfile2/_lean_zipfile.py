@@ -240,7 +240,8 @@ class LeanZipFile(object):
             return ZipExtFile(zef_file, 'r', zinfo, None, close_fileobj=False)
 
     def read(self, zinfo_or_name):
-        """Return file bytes (as a string) for the given ZipInfo object.
+        """Return file bytes (as a string) for the given ZipInfo object or
+        archive name..
 
         Parameters
         ----------
