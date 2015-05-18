@@ -66,6 +66,8 @@ else:
 
 from .common import TooManyFiles
 
+_UTF8_EXTENSION_FLAG = 0x800
+
 if sys.version_info[:2] < (2, 7):
     class _ZipExtFile(ZipExtFile):
         def __enter__(self):
@@ -152,7 +154,7 @@ class LeanZipFile(object):
                 raise BadZipFile("Bad magic number for central directory")
             filename = fp.read(centdir[_CD_FILENAME_LENGTH])
             flags = centdir[5]
-            if flags & 0x800:
+            if flags & _UTF8_EXTENSION_FLAG:
                 # UTF-8 file names extension
                 filename = filename.decode('utf-8')
             else:
@@ -223,7 +225,7 @@ class LeanZipFile(object):
             # strong encryption
             raise NotImplementedError("strong encryption (flag bit 6)")
 
-        if zinfo.flag_bits & 0x800:
+        if zinfo.flag_bits & _UTF8_EXTENSION_FLAG:
             # UTF-8 filename
             fname_str = fname.decode("utf-8")
         else:
