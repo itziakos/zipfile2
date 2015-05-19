@@ -195,6 +195,7 @@ class TestZipFile(unittest.TestCase):
     def test_multiple_archives_writestr(self):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
+        target = os.path.join(self.tempdir, "file.py")
 
         # When
         with ZipFile(zipfile, "w") as zp:
@@ -203,11 +204,14 @@ class TestZipFile(unittest.TestCase):
                 zp.writestr("file.py", b"dato")
 
         with ZipFile(zipfile) as zp:
-            data = zp.extract("file.py")
+            new_path = zp.extract("file.py", self.tempdir)
+            data = zp.read("file.py")
 
         # Then
         self.assertTrue(os.path.exists(zipfile))
-        self.assertTrue(data, b"data")
+        self.assertTrue(os.path.exists(target))
+        self.assertEqual(data, b"data")
+        self.assertEqual(new_path, target)
 
     def test_multiple_archives_read(self):
         # Given

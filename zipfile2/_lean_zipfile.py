@@ -92,7 +92,18 @@ class LeanZipFile(object):
     to use too much memory, or when you need to handle arbitrary zip files
     (e.g. in a server).
     """
-    def __init__(self, filename, max_file_count=100000):
+    def __init__(self, filename, max_file_count=None):
+        """ Creates a new LeanZipFile instance
+
+        Parameters
+        ----------
+        filename: str
+            Zipfile path
+        max_file_count: int or None
+            the zipfile has more members than max_file_count, a
+            TooManyFiles exception will be raised when accessing members
+            beyond this limit. A value of None disable ths limit.
+        """
         self.filename = filename
         self.fp = open(filename, 'rb')
         self.max_file_count = max_file_count
@@ -186,7 +197,7 @@ class LeanZipFile(object):
                      + centdir[_CD_COMMENT_LENGTH])
 
             file_count += 1
-            if file_count > max_file_count:
+            if max_file_count is not None and file_count > max_file_count:
                 raise TooManyFiles('Too many files in egg')
 
             if x.filename in filenames:
