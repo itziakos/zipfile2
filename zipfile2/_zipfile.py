@@ -14,6 +14,9 @@ from .common import text_type
 IS_ZIPFILE_OLD_STYLE_CLASS = sys.version_info[:3] < (2, 7, 4)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
+#Enum choices for Zipfile.extractall preserve_permissions argument
+PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL = range(3)
+
 
 def is_zipinfo_symlink(zip_info):
     """Return True if the given zip_info instance refers to a symbolic link."""
@@ -58,14 +61,51 @@ class ZipFile(zipfile.ZipFile):
                    "want to support this, use low_level=True.")
             raise ValueError(msg)
 
-    def extract_to(self, member, destination, path=None, pwd=None):
+    def extract(self, member, path=None, pwd=None,
+                preserve_permissions=PERMS_PRESERVE_NONE):
+        if not isinstance(member, zipfile.ZipInfo):
+            member = self.getinfo(member)
+
+        if path is None:
+            path = os.getcwd()
+ 
+        return self._extract_member(member, path, pwd, preserve_permissions)
+ 
+    def extractall(self, path=None, members=None, pwd=None,
+                   preserve_permissions=PERMS_PRESERVE_NONE):
+        """ Extract all members from the archive to the current working
+        directory.
+
+        Parameters
+        -----------
+        path: str
+            path specifies a different directory to extract to.
+        members: list
+            is optional and must be a subset of the list returned by
+            namelist().
+        preserve_permissions: int
+            controls whether permissions of zipped files are preserved or
+            not. Default is PERMS_PRESERVE_NONE - do not preserve any
+            permissions. Other options are to preserve safe subset of
+            permissions PERMS_PRESERVE_SAFE or all permissions
+            PERMS_PRESERVE_ALL.
+        """
+        if members is None:
+            members = self.namelist()
+ 
+        for zipinfo in members:
+            self.extract(zipinfo, path, pwd, preserve_permissions)
+ 
+    def extract_to(self, member, destination, path=None, pwd=None,
+                   preserve_permissions=PERMS_PRESERVE_NONE):
         if not isinstance(member, zipfile.ZipInfo):
             member = self.getinfo(member)
 
         if path is None:
             path = os.getcwd()
 
-        return self._extract_member_to(member, destination, path, pwd)
+        return self._extract_member_to(member, destination, path, pwd,
+                                       preserve_permissions)
 
     def write(self, filename, arcname=None, compress_type=None):
         if arcname is None:
@@ -116,9 +156,9 @@ class ZipFile(zipfile.ZipFile):
                                               compress_type)
 
     # Overriden so that ZipFile.extract* support softlink
-    def _extract_member(self, member, targetpath, pwd):
+    def _extract_member(self, member, targetpath, pwd, preserve_permissions):
         return self._extract_member_to(member, member.filename,
-                                       targetpath, pwd)
+                                       targetpath, pwd, preserve_permissions)
 
     def _extract_symlink(self, member, link_name, pwd=None):
         source = self.read(member).decode("utf8")
@@ -130,7 +170,8 @@ class ZipFile(zipfile.ZipFile):
     # This is mostly copied from the stdlib zipfile.ZipFile._extract_member,
     # extended to allow soft link support. This needed copying to allow arcname
     # to not be based on ZipInfo.arcname
-    def _extract_member_to(self, member, arcname, targetpath, pwd):
+    def _extract_member_to(self, member, arcname, targetpath, pwd,
+                           preserve_permissions):
         """Extract the ZipInfo object 'member' to a physical
            file on the path targetpath.
         """
@@ -172,7 +213,7 @@ class ZipFile(zipfile.ZipFile):
             return targetpath
 
         if is_zipinfo_symlink(member):
-            return self._extract_symlink(member, targetpath, pwd)
+            targetpath = self._extract_symlink(member, targetpath, pwd)
         else:
             source = self.open(member, pwd=pwd)
             try:
@@ -181,7 +222,17 @@ class ZipFile(zipfile.ZipFile):
             finally:
                 source.close()
 
-            return targetpath
+        if preserve_permissions in (PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
+            if preserve_permissions == PERMS_PRESERVE_ALL:
+                #preserve bits 0-11: sugrwxrwxrwx, this include
+                #sticky bit, uid bit, gid bit
+                mode = member.external_attr >> 16 & 0xFFF
+            elif PERMS_PRESERVE_SAFE:
+                #preserve bits 0-8 only: rwxrwxrwx
+                mode = member.external_attr >> 16 & 0x1FF
+            os.chmod(targetpath, mode)
+
+        return targetpath
 
     def __enter__(self):
         return self

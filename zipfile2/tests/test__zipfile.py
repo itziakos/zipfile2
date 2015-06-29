@@ -4,18 +4,22 @@ import hashlib
 import os
 import os.path
 import shutil
+import stat
 import sys
 import tempfile
+import zipfile
 
 if sys.version_info[:2] < (2, 7):
     import unittest2 as unittest
 else:
     import unittest
 
-from zipfile2 import ZipFile
+from zipfile2 import (
+    PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
+)
 
 from ..common import PY2, string_types
-from .common import NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK
+from .common import NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK, ZIP_WITH_PERMISSIONS
 
 if PY2:
     import StringIO
@@ -324,3 +328,128 @@ class TestZipFile(unittest.TestCase):
 
         # Then
         self.assertIsNone(zp.fp)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_permissions(self):
+        # Given
+        path = ZIP_WITH_PERMISSIONS
+        symlink = os.path.join(self.tempdir, "bin", "python")
+        target = os.path.join(self.tempdir, "bin", "python2.7")
+
+        # When/Then
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir,
+                          preserve_permissions=PERMS_PRESERVE_SAFE)
+
+        # Then
+        self.assertTrue(os.path.exists(symlink))
+        self.assertTrue(os.path.exists(target))
+        self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), 0o755)
+
+
+class TestsPermissionExtraction(unittest.TestCase):
+    def setUp(self):
+        permissions = {
+            'user': (stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR),
+            'group': (stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP),
+            'other': (stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH),
+            'special': (stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
+        }
+        self.files = []
+        name_pattern = '{permgroup:s}_{octalcode:03b}_{specialcode:03b}'
+
+        self.tempdir = tempfile.mkdtemp()
+        self.filename = os.path.join(self.tempdir,
+                                     "yoyo_{0}_tmp".format(os.getpid()))
+
+        for permgroup in ('user', 'group', 'other'):
+            for index in range(8):
+                for specialindex in range(3):
+                    filename = name_pattern.\
+                        format(permgroup=permgroup, octalcode=index,
+                               specialcode=specialindex)
+                    path = os.path.join(self.tempdir, filename)
+                    with open(path, 'wt') as file_:
+                        file_.write(filename)
+                    mode = stat.S_IRUSR
+                    for order in range(3):
+                        if index & 1 << order:
+                            mode |= permissions[permgroup][order]
+                    for order in range(3):
+                        if specialindex & 1 << order:
+                            mode |= permissions['special'][order]
+                    os.chmod(path, mode)
+                    real_permission = os.stat(path).st_mode & 0xFFF
+                    self.files.append((path, real_permission))
+
+        with ZipFile(self.filename, 'w', zipfile.ZIP_STORED) as zipfp:
+            for path, mode in self.files:
+                filename = os.path.basename(path)
+                path = os.path.join(self.tempdir, filename)
+                zipfp.write(path, filename)
+                os.remove(path)
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+
+    def test_extractall_preserve_none(self):
+        umask = os.umask(0)
+        os.umask(umask)
+        with ZipFile(self.filename, 'r') as zipfp:
+            zipfp.extractall(self.tempdir)
+            for path, mode in self.files:
+                expected_mode = 0o666 & ~umask
+                self.assertTrue(os.path.exists(path))
+                self.assertEqual(os.stat(path).st_mode & 0xFFF,
+                                 expected_mode)
+
+    def test_extractall_preserve_safe(self):
+        with ZipFile(self.filename, 'r') as zipfp:
+            zipfp.extractall(self.tempdir,
+                             preserve_permissions=PERMS_PRESERVE_SAFE)
+            for filename, mode in self.files:
+                expected_mode = mode & 0x1FF
+                self.assertTrue(os.path.exists(filename))
+                self.assertEqual(os.stat(filename).st_mode & 0xFFF,
+                                 expected_mode)
+
+    def test_extractall_preserve_all(self):
+        with ZipFile(self.filename, 'r') as zipfp:
+            zipfp.extractall(self.tempdir,
+                             preserve_permissions=PERMS_PRESERVE_ALL)
+            for filename, mode in self.files:
+                self.assertTrue(os.path.exists(filename))
+                self.assertEqual(os.stat(filename).st_mode & 0xFFF, mode)
+
+    def test_extract_preserve_none(self):
+        umask = os.umask(0)
+        os.umask(umask)
+        with ZipFile(self.filename, 'r') as zipfp:
+            for filename, mode in self.files:
+                arcname = os.path.basename(filename)
+                zipfp.extract(arcname, path=self.tempdir)
+                expected_mode = 0o666 & ~umask
+                self.assertTrue(os.path.exists(filename))
+                self.assertEqual(os.stat(filename).st_mode & 0xFFF,
+                                 expected_mode)
+
+    def test_extract_preserve_safe(self):
+        with ZipFile(self.filename, 'r') as zipfp:
+            for filename, mode in self.files:
+                arcname = os.path.basename(filename)
+                zipfp.extract(arcname, path=self.tempdir,
+                              preserve_permissions=PERMS_PRESERVE_SAFE)
+                expected_mode = mode & 0x1FF
+                self.assertTrue(os.path.exists(filename))
+                self.assertEqual(os.stat(filename).st_mode & 0xFFF,
+                                 expected_mode)
+
+    def test_extract_preserve_all(self):
+        with ZipFile(self.filename, 'r') as zipfp:
+            for filename, mode in self.files:
+                arcname = os.path.basename(filename)
+                zipfp.extract(arcname, path=self.tempdir,
+                              preserve_permissions=PERMS_PRESERVE_ALL)
+                self.assertTrue(os.path.exists(filename))
+                self.assertEqual(os.stat(filename).st_mode & 0xFFF, mode)
