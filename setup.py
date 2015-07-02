@@ -6,9 +6,9 @@ from setuptools import setup
 
 MAJOR = 0
 MINOR = 0
-MICRO = 7
+MICRO = 8
 
-IS_RELEASED = True
+IS_RELEASED = False
 
 VERSION_INFO = (MAJOR, MINOR, MICRO)
 VERSION = ".".join(str(i) for i in VERSION_INFO)
