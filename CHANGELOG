@@ -1,9 +1,9 @@
-XXXX-XX-XX   0.0.7:
+2015-07-02   0.0.7:
 -------------------
 
 New feature:
 
-  * Add support for writing files with the stores permissions using
+  * Add support for writing files with the stored permissions when using
   extract/extractall.
 
 2015-05-19   0.0.6:
