@@ -15,7 +15,7 @@ else:
     import unittest
 
 from zipfile2 import (
-    PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
+    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
 
 from ..common import PY2, string_types
