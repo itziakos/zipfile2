@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import errno
 import hashlib
 import os
 import os.path
@@ -34,6 +35,17 @@ else:
 SUPPORT_SYMLINK = hasattr(os, "symlink")
 
 HERE = os.path.dirname(__file__)
+
+
+def handle_readonly(func, path, exc):
+    excvalue = exc[1]
+    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+        # change the file to be readable,writable,executable: 0777
+        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        # retry
+        func(path)
+    else:
+        raise
 
 
 def list_files(top):
@@ -339,6 +351,10 @@ class TestZipFile(unittest.TestCase):
         path = ZIP_WITH_PERMISSIONS
         symlink = os.path.join(self.tempdir, "bin", "python")
         target = os.path.join(self.tempdir, "bin", "python2.7")
+        if sys.platform == "win32":
+            r_mode = 0o666
+        else:
+            r_mode = 0o755
 
         # When/Then
         with ZipFile(path) as zp:
@@ -348,7 +364,7 @@ class TestZipFile(unittest.TestCase):
         # Then
         self.assertTrue(os.path.exists(symlink))
         self.assertTrue(os.path.exists(target))
-        self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), 0o755)
+        self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), r_mode)
 
 
 class TestsPermissionExtraction(unittest.TestCase):
@@ -391,10 +407,11 @@ class TestsPermissionExtraction(unittest.TestCase):
                 filename = os.path.basename(path)
                 path = os.path.join(self.tempdir, filename)
                 zipfp.write(path, filename)
+                os.chmod(path, stat.S_IWRITE)
                 os.remove(path)
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir)
+        shutil.rmtree(self.tempdir, onerror=handle_readonly)
 
     def test_extractall_preserve_none(self):
         umask = os.umask(0)
