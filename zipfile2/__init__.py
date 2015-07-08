@@ -13,9 +13,14 @@ from ._zipfile import (
     PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
 from ._lean_zipfile import LeanZipFile
+from zipfile import (
+    ZIP64_LIMIT, ZIP_DEFLATED, ZIP_FILECOUNT_LIMIT, ZIP_MAX_COMMENT,
+    ZIP_STORED,
+)
 
 __all__ = [
     "__git_revision__", "__is_released__", "__version__", "LeanZipFile",
     "TooManyFiles", "ZipFile", "PERMS_PRESERVE_NONE", "PERMS_PRESERVE_SAFE",
-    "PERMS_PRESERVE_ALL",
+    "PERMS_PRESERVE_ALL", "ZIP64_LIMIT", "ZIP_DEFLATED", "ZIP_FILECOUNT_LIMIT",
+    "ZIP_MAX_COMMENT", "ZIP_STORED",
 ]
