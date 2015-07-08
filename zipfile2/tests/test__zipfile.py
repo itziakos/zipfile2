@@ -16,7 +16,7 @@ else:
     import unittest
 
 from zipfile2 import (
-    PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
+    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
 
 from ..common import PY2, string_types
@@ -38,11 +38,11 @@ def handle_readonly(func, path, exc):
     excvalue = exc[1]
     if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
         # change the file to be readable,writable,executable: 0777
-	os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-	# retry
-	func(path)
+        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        # retry
+        func(path)
     else:
-	raise
+        raise
 
 
 def list_files(top):
