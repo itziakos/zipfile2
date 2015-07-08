@@ -212,7 +212,7 @@ class ZipFile(zipfile.ZipFile):
                 os.mkdir(targetpath)
             return targetpath
         elif is_zipinfo_symlink(member):
-            targetpath = self._extract_symlink(member, targetpath, pwd)
+            return self._extract_symlink(member, targetpath, pwd)
         else:
             source = self.open(member, pwd=pwd)
             try:
