@@ -348,6 +348,10 @@ class TestZipFile(unittest.TestCase):
         path = ZIP_WITH_PERMISSIONS
         symlink = os.path.join(self.tempdir, "bin", "python")
         target = os.path.join(self.tempdir, "bin", "python2.7")
+        if sys.platform == "win32":
+            r_mode = 0o666
+        else:
+            r_mode = 0o755
 
         # When/Then
         with ZipFile(path) as zp:
@@ -357,7 +361,7 @@ class TestZipFile(unittest.TestCase):
         # Then
         self.assertTrue(os.path.exists(symlink))
         self.assertTrue(os.path.exists(target))
-        self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), 0o755)
+        self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), r_mode)
 
 
 class TestsPermissionExtraction(unittest.TestCase):
