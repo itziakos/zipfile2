@@ -211,9 +211,8 @@ class ZipFile(zipfile.ZipFile):
             if not os.path.isdir(targetpath):
                 os.mkdir(targetpath)
             return targetpath
-
-        if is_zipinfo_symlink(member):
-            targetpath = self._extract_symlink(member, targetpath, pwd)
+        elif is_zipinfo_symlink(member):
+            return self._extract_symlink(member, targetpath, pwd)
         else:
             source = self.open(member, pwd=pwd)
             try:
@@ -222,17 +221,17 @@ class ZipFile(zipfile.ZipFile):
             finally:
                 source.close()
 
-        if preserve_permissions in (PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
-            if preserve_permissions == PERMS_PRESERVE_ALL:
-                #preserve bits 0-11: sugrwxrwxrwx, this include
-                #sticky bit, uid bit, gid bit
-                mode = member.external_attr >> 16 & 0xFFF
-            elif PERMS_PRESERVE_SAFE:
-                #preserve bits 0-8 only: rwxrwxrwx
-                mode = member.external_attr >> 16 & 0x1FF
-            os.chmod(targetpath, mode)
+            if preserve_permissions in (PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
+                if preserve_permissions == PERMS_PRESERVE_ALL:
+                    #preserve bits 0-11: sugrwxrwxrwx, this include
+                    #sticky bit, uid bit, gid bit
+                    mode = member.external_attr >> 16 & 0xFFF
+                elif PERMS_PRESERVE_SAFE:
+                    #preserve bits 0-8 only: rwxrwxrwx
+                    mode = member.external_attr >> 16 & 0x1FF
+                os.chmod(targetpath, mode)
 
-        return targetpath
+            return targetpath
 
     def __enter__(self):
         return self

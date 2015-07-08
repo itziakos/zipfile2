@@ -15,11 +15,14 @@ else:
     import unittest
 
 from zipfile2 import (
-    PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
+    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
 
 from ..common import PY2, string_types
-from .common import NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK, ZIP_WITH_PERMISSIONS
+from .common import (
+    NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK, ZIP_WITH_PERMISSIONS,
+    ZIP_WITH_SOFTLINK_AND_PERMISSIONS
+)
 
 if PY2:
     import StringIO
@@ -453,3 +456,21 @@ class TestsPermissionExtraction(unittest.TestCase):
                               preserve_permissions=PERMS_PRESERVE_ALL)
                 self.assertTrue(os.path.exists(filename))
                 self.assertEqual(os.stat(filename).st_mode & 0xFFF, mode)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_extract_preserve_safe_with_symlink(self):
+        # Given
+        python27 = os.path.join(self.tempdir, "bin", "python2.7")
+        python = os.path.join(self.tempdir, "bin", "python")
+
+        # When
+        with ZipFile(ZIP_WITH_SOFTLINK_AND_PERMISSIONS) as zipfp:
+            zipfp.extractall(self.tempdir,
+                             preserve_permissions=PERMS_PRESERVE_SAFE)
+
+        # Then
+        self.assertTrue(os.path.exists(python))
+        self.assertTrue(os.path.islink(python))
+        self.assertTrue(os.path.exists(python27))
+        self.assertTrue(os.access(python27, os.X_OK))
