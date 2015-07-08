@@ -249,6 +249,8 @@ class LeanZipFile(object):
 
         if sys.version_info[:2] < (2, 7):
             return _ZipExtFile(zef_file, zinfo)
+	elif sys.version_info[:2] < (3, 4) and sys.platform == 'win32':
+            return ZipExtFile(zef_file, 'r', zinfo)
         else:
             return ZipExtFile(zef_file, 'r', zinfo, None, close_fileobj=False)
 
