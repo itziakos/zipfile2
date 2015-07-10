@@ -18,3 +18,7 @@ script:
 notifications:
   email:
     - cournape@gmail.com
+
+after_success:
+  - pip install codecov
+  - codecov
