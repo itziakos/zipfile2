@@ -75,31 +75,6 @@ def compute_md5(path):
         return _compute_checksum(path)
 
 
-# Taken from the pew project
-def which(fn):
-    """Simplified version of shutil.which for internal usage.
-
-    Doesn't look up commands ending in '.exe' (we don't use them), nor does it
-    avoid looking up commands that already have their directory specified (we
-    don't use them either) and it doesn't check the current directory, just
-    like on *nix systems.
-    """
-    def _access_check(fn):
-        return (os.path.exists(fn) and os.access(fn, os.F_OK | os.X_OK)
-                and not os.path.isdir(fn))
-
-    pathext = os.environ.get("PATHEXT", "").split(os.pathsep)
-    files = [fn + ext.lower() for ext in pathext]
-    path = os.environ.get("PATH", os.defpath).split(os.pathsep)
-    seen = set()
-    for dir in map(os.path.normcase, path):
-        if dir not in seen:
-            seen.add(dir)
-            for name in map(lambda f: os.path.join(dir, f), files):
-                if _access_check(name):
-                    return name
-
-
 def create_broken_symlink(link):
     d = os.path.dirname(link)
     os.makedirs(d)
@@ -109,8 +84,10 @@ def create_broken_symlink(link):
 class TestZipFile(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.tempdir2 = tempfile.mkdtemp()
 
     def tearDown(self):
+        shutil.rmtree(self.tempdir2)
         shutil.rmtree(self.tempdir)
 
     if PY2:
@@ -401,13 +378,32 @@ class TestZipFile(unittest.TestCase):
 
         # Given
         path = ZIP_WITH_SOFTLINK
+        some_data = b"some data"
         r_files = [
             os.path.join("lib", "foo.so.1.3"), os.path.join("lib", "foo.so")
         ]
         r_link = os.path.join(self.tempdir, "lib", "foo.so")
         r_file = os.path.join(self.tempdir, "lib", "foo.so.1.3")
 
-        read_only_file = which("dir")  # Any system file would do obviously
+        read_only_file = os.path.join(self.tempdir2, "read_only_file")
+
+        def _create_read_only_file(read_only_file):
+            with open(read_only_file, "wb") as fp:
+                fp.write(some_data)
+
+            mode = os.stat(read_only_file)[stat.ST_MODE]
+            os.chmod(
+                read_only_file,
+                mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+            )
+
+            try:
+                with open(read_only_file, "wb") as fp:
+                    pass
+                raise RuntimeError("Creation of RO file failed")
+            except IOError as e:
+                if e.errno != errno.EACCES:
+                    raise
 
         def _create_link_to_ro(link_to_read_only_file):
             # Hack: we create a symlink toward a RO file to check the
@@ -416,6 +412,8 @@ class TestZipFile(unittest.TestCase):
 
             os.unlink(link_to_read_only_file)
             os.symlink(read_only_file, link_to_read_only_file)
+
+        _create_read_only_file(read_only_file)
 
         # When
         with ZipFile(path) as zp:
@@ -430,10 +428,15 @@ class TestZipFile(unittest.TestCase):
         files = list_files(self.tempdir)
 
         # Then
-        self.assertEqual(set(files), set(r_files))
+        self.assertCountEqual(files, r_files)
         self.assertTrue(os.path.islink(r_link))
         self.assertFalse(os.path.islink(r_file))
         self.assertEqual(compute_md5(r_file), original_md5)
+        # Making sure we did not modify the file originally linked to
+        # by the overwritten symlink
+        self.assertEqual(
+            compute_md5(read_only_file), hashlib.md5(some_data).hexdigest()
+        )
 
 
 class TestsPermissionExtraction(unittest.TestCase):
