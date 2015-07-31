@@ -75,6 +75,31 @@ def compute_md5(path):
         return _compute_checksum(path)
 
 
+# Taken from the pew project
+def which(fn):
+    """Simplified version of shutil.which for internal usage.
+
+    Doesn't look up commands ending in '.exe' (we don't use them), nor does it
+    avoid looking up commands that already have their directory specified (we
+    don't use them either) and it doesn't check the current directory, just
+    like on *nix systems.
+    """
+    def _access_check(fn):
+        return (os.path.exists(fn) and os.access(fn, os.F_OK | os.X_OK)
+                and not os.path.isdir(fn))
+
+    pathext = os.environ.get("PATHEXT", "").split(os.pathsep)
+    files = [fn + ext.lower() for ext in pathext]
+    path = os.environ.get("PATH", os.defpath).split(os.pathsep)
+    seen = set()
+    for dir in map(os.path.normcase, path):
+        if dir not in seen:
+            seen.add(dir)
+            for name in map(lambda f: os.path.join(dir, f), files):
+                if _access_check(name):
+                    return name
+
+
 def create_broken_symlink(link):
     d = os.path.dirname(link)
     os.makedirs(d)
@@ -365,6 +390,50 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.exists(symlink))
         self.assertTrue(os.path.exists(target))
         self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), r_mode)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_existing_symlink_replacement(self):
+        # Ensure that when we overwrite an existing file with extract* methods,
+        # we don't fail in the case a file already exists but is a symlink to a
+        # file we don't have access to.
+        self.maxDiff = None
+
+        # Given
+        path = ZIP_WITH_SOFTLINK
+        r_files = [
+            os.path.join("lib", "foo.so.1.3"), os.path.join("lib", "foo.so")
+        ]
+        r_link = os.path.join(self.tempdir, "lib", "foo.so")
+        r_file = os.path.join(self.tempdir, "lib", "foo.so.1.3")
+
+        read_only_file = which("dir")  # Any system file would do obviously
+
+        def _create_link_to_ro(link_to_read_only_file):
+            # Hack: we create a symlink toward a RO file to check the
+            # destination can be overwritten
+            assert not os.path.islink(link_to_read_only_file)
+
+            os.unlink(link_to_read_only_file)
+            os.symlink(read_only_file, link_to_read_only_file)
+
+        # When
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+
+        original_md5 = compute_md5(r_file)
+
+        _create_link_to_ro(r_file)
+
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+        files = list_files(self.tempdir)
+
+        # Then
+        self.assertEqual(set(files), set(r_files))
+        self.assertTrue(os.path.islink(r_link))
+        self.assertFalse(os.path.islink(r_file))
+        self.assertEqual(compute_md5(r_file), original_md5)
 
 
 class TestsPermissionExtraction(unittest.TestCase):
