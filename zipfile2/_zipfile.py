@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import errno
 import os
 import shutil
 import stat
@@ -216,6 +217,7 @@ class ZipFile(zipfile.ZipFile):
         else:
             source = self.open(member, pwd=pwd)
             try:
+                _unlink_if_exists(targetpath)
                 with open(targetpath, "wb") as target:
                     shutil.copyfileobj(source, target)
             finally:
@@ -238,3 +240,11 @@ class ZipFile(zipfile.ZipFile):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+
+def _unlink_if_exists(p):
+    try:
+        os.unlink(p)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise

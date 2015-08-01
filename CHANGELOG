@@ -1,3 +1,11 @@
+xxxxxxxxxx   0.0.9:
+-------------------
+
+Bug fixes:
+
+  * Fix extract* methods so that overwriting an existing file does not fail
+    when the overwritten file is a symlink to a RO file.
+
 2015-07-08   0.0.8:
 -------------------
 

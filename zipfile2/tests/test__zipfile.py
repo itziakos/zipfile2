@@ -84,8 +84,10 @@ def create_broken_symlink(link):
 class TestZipFile(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
+        self.tempdir2 = tempfile.mkdtemp()
 
     def tearDown(self):
+        shutil.rmtree(self.tempdir2)
         shutil.rmtree(self.tempdir)
 
     if PY2:
@@ -365,6 +367,76 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.exists(symlink))
         self.assertTrue(os.path.exists(target))
         self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), r_mode)
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_existing_symlink_replacement(self):
+        # Ensure that when we overwrite an existing file with extract* methods,
+        # we don't fail in the case a file already exists but is a symlink to a
+        # file we don't have access to.
+        self.maxDiff = None
+
+        # Given
+        path = ZIP_WITH_SOFTLINK
+        some_data = b"some data"
+        r_files = [
+            os.path.join("lib", "foo.so.1.3"), os.path.join("lib", "foo.so")
+        ]
+        r_link = os.path.join(self.tempdir, "lib", "foo.so")
+        r_file = os.path.join(self.tempdir, "lib", "foo.so.1.3")
+
+        read_only_file = os.path.join(self.tempdir2, "read_only_file")
+
+        def _create_read_only_file(read_only_file):
+            with open(read_only_file, "wb") as fp:
+                fp.write(some_data)
+
+            mode = os.stat(read_only_file)[stat.ST_MODE]
+            os.chmod(
+                read_only_file,
+                mode & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH
+            )
+
+            try:
+                with open(read_only_file, "wb") as fp:
+                    pass
+                raise RuntimeError("Creation of RO file failed")
+            except IOError as e:
+                if e.errno != errno.EACCES:
+                    raise
+
+        def _create_link_to_ro(link_to_read_only_file):
+            # Hack: we create a symlink toward a RO file to check the
+            # destination can be overwritten
+            assert not os.path.islink(link_to_read_only_file)
+
+            os.unlink(link_to_read_only_file)
+            os.symlink(read_only_file, link_to_read_only_file)
+
+        _create_read_only_file(read_only_file)
+
+        # When
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+
+        original_md5 = compute_md5(r_file)
+
+        _create_link_to_ro(r_file)
+
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+        files = list_files(self.tempdir)
+
+        # Then
+        self.assertCountEqual(files, r_files)
+        self.assertTrue(os.path.islink(r_link))
+        self.assertFalse(os.path.islink(r_file))
+        self.assertEqual(compute_md5(r_file), original_md5)
+        # Making sure we did not modify the file originally linked to
+        # by the overwritten symlink
+        self.assertEqual(
+            compute_md5(read_only_file), hashlib.md5(some_data).hexdigest()
+        )
 
 
 class TestsPermissionExtraction(unittest.TestCase):
