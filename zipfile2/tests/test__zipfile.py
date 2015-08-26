@@ -15,6 +15,8 @@ if sys.version_info[:2] < (2, 7):
 else:
     import unittest
 
+import zipfile2
+
 from zipfile2 import (
     PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
@@ -199,19 +201,20 @@ class TestZipFile(unittest.TestCase):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
         to = os.path.join(self.tempdir, "to")
+        filename = os.path.relpath(__file__, os.getcwd())
 
         # When
         with ZipFile(zipfile, "w") as zp:
-            zp.write(__file__, "file.py")
+            zinfo = zp.write(filename)
             with self.assertRaises(ValueError):
-                zp.write(__file__, "file.py")
+                zp.write(filename)
 
         with ZipFile(zipfile) as zp:
             zp.extractall(to)
 
         # Then
         self.assertTrue(os.path.exists(zipfile))
-        self.assertTrue(os.path.exists(os.path.join(to, "file.py")))
+        self.assertTrue(os.path.exists(os.path.join(to, filename)))
 
     def test_multiple_archives_writestr(self):
         # Given
@@ -233,6 +236,26 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.exists(target))
         self.assertEqual(data, b"data")
         self.assertEqual(new_path, target)
+
+    def test_multiple_archives_writestr_write(self):
+        # Given
+        zipfile = os.path.join(self.tempdir, "foo.zip")
+        to = os.path.join(self.tempdir, "to")
+        filename = os.path.relpath(__file__, os.getcwd())
+        arcname = filename
+
+        # When
+        with ZipFile(zipfile, "w") as zp:
+            zp.write(filename, arcname)
+            with self.assertRaises(ValueError):
+                zp.writestr(arcname, b"data")
+
+        with ZipFile(zipfile) as zp:
+            zp.extractall(to)
+
+        # Then
+        self.assertTrue(os.path.exists(zipfile))
+        self.assertTrue(os.path.exists(os.path.join(to, filename)))
 
     def test_multiple_archives_read(self):
         # Given

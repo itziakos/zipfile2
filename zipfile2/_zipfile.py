@@ -111,20 +111,15 @@ class ZipFile(zipfile.ZipFile):
     def write(self, filename, arcname=None, compress_type=None):
         if arcname is None:
             arcname = filename
-        arcname = os.path.normpath(os.path.splitdrive(arcname)[1])
-        while arcname[0] in (os.sep, os.altsep):
-            arcname = arcname[1:]
-
         st = os.lstat(filename)
+
+        arcname = self._normalize_arcname(arcname)
 
         if stat.S_ISDIR(st.st_mode):
             arcname += '/'
 
-        if arcname in self._filenames_set and not self.low_level:
-            msg = "{0!r} is already in archive (as {1!r})".format(filename,
-                                                                  arcname)
-            raise ValueError(msg)
-        elif stat.S_ISLNK(st.st_mode):
+        self._ensure_uniqueness(arcname)
+        if stat.S_ISLNK(st.st_mode):
             mtime = time.localtime(st.st_mtime)
             date_time = mtime[0:6]
 
@@ -141,20 +136,18 @@ class ZipFile(zipfile.ZipFile):
 
     def writestr(self, zinfo_or_arcname, bytes, compress_type=None):
         if not isinstance(zinfo_or_arcname, zipfile.ZipInfo):
-            arcname = zinfo_or_arcname
+            arcname = self._normalize_arcname(zinfo_or_arcname)
         else:
             arcname = zinfo_or_arcname.filename
 
-        if arcname in self._filenames_set and not self.low_level:
-            msg = "{0!r} is already in archive".format(arcname)
-            raise ValueError(msg)
+        self._ensure_uniqueness(arcname)
+
+        self._filenames_set.add(arcname)
+        if IS_ZIPFILE_OLD_STYLE_CLASS:
+            zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
         else:
-            self._filenames_set.add(arcname)
-            if IS_ZIPFILE_OLD_STYLE_CLASS:
-                zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
-            else:
-                super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
-                                              compress_type)
+            super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
+                                            compress_type)
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd, preserve_permissions):
@@ -240,6 +233,23 @@ class ZipFile(zipfile.ZipFile):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def _ensure_uniqueness(self, arcname):
+        if not self.low_level and arcname in self._filenames_set:
+            msg = "{0!r} is already in archive".format(arcname)
+            raise ValueError(msg)
+
+    def _normalize_arcname(self, arcname):
+        arcname = os.path.normpath(os.path.splitdrive(arcname)[1])
+        while arcname[0] in (os.sep, os.altsep):
+            arcname = arcname[1:]
+        # This is used to ensure paths in generated ZIP files always use
+        # forward slashes as the directory separator, as required by the
+        # ZIP format specification.
+        if os.sep != "/" and os.sep in arcname:
+            arcname = arcname.replace(os.sep, "/")
+
+        return arcname
 
 
 def _unlink_if_exists(p):
