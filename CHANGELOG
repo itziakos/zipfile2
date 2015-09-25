@@ -1,3 +1,12 @@
+XXXXXXXXXX   0.0.11:
+-------------------
+
+Features:
+
+  * ZipFile gets an add_tree method to easily create an archive from recurively
+    walking into a directory.
+
+
 2015-08-26   0.0.10:
 -------------------
 

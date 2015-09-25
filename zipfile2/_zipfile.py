@@ -62,6 +62,30 @@ class ZipFile(zipfile.ZipFile):
                    "want to support this, use low_level=True.")
             raise ValueError(msg)
 
+    def add_tree(self, directory, include_top=False):
+        """ Zip the given directory into this archive, by walking into it.
+
+        The archive names will be relative to the directory, e.g. for::
+
+            <directory>/foo.txt
+            <directory>/bar/foo.txt
+
+        doing add_tree(<directory>) will give you a zipfile with the content::
+
+            foo.txt
+            bar/foo.txt
+        """
+        if include_top:
+            base = os.path.basename(directory)
+        else:
+            base = "."
+
+        for root, dirs, files in os.walk(directory):
+            entries = [os.path.join(root, entry) for entry in dirs + files]
+            for entry in entries:
+                arcname = os.path.join(base, os.path.relpath(entry, directory))
+                self.write(entry, arcname)
+
     def extract(self, member, path=None, pwd=None,
                 preserve_permissions=PERMS_PRESERVE_NONE):
         if not isinstance(member, zipfile.ZipInfo):

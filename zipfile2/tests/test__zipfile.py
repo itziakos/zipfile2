@@ -15,8 +15,6 @@ if sys.version_info[:2] < (2, 7):
 else:
     import unittest
 
-import zipfile2
-
 from zipfile2 import (
     PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
@@ -205,7 +203,7 @@ class TestZipFile(unittest.TestCase):
 
         # When
         with ZipFile(zipfile, "w") as zp:
-            zinfo = zp.write(filename)
+            zp.write(filename)
             with self.assertRaises(ValueError):
                 zp.write(filename)
 
@@ -460,6 +458,69 @@ class TestZipFile(unittest.TestCase):
         self.assertEqual(
             compute_md5(read_only_file), hashlib.md5(some_data).hexdigest()
         )
+
+    def test_add_tree(self):
+        # Given
+        path = os.path.join(self.tempdir, "foo.zip")
+
+        source_dir = os.path.join(self.tempdir, "from")
+
+        extract_dir = os.path.join(self.tempdir, "to")
+        os.makedirs(extract_dir)
+
+        files = [
+            os.path.join(source_dir, "foo.txt"),
+            os.path.join(source_dir, "foo", "fubar", "foo.txt"),
+        ]
+        r_files = [
+            os.path.join(extract_dir, "foo.txt"),
+            os.path.join(extract_dir, "foo", "fubar", "foo.txt"),
+        ]
+
+        for f in files:
+            os.makedirs(os.path.dirname(f))
+            with open(f, "wb") as fp:
+                fp.write(b"yolo")
+
+        # When
+        with ZipFile(path, "w") as zp:
+            zp.add_tree(source_dir)
+
+        # Then
+        with ZipFile(path) as zp:
+            zp.extractall(extract_dir)
+            self.assertCountEqual(
+                zp.namelist(),
+                ["foo/", "foo/fubar/", "foo.txt", "foo/fubar/foo.txt"]
+            )
+
+        for f in r_files:
+            os.path.exists(f)
+            with open(f, "rb") as fp:
+                self.assertEqual(fp.read(), b"yolo")
+
+        # Given
+        r_files = [
+            os.path.join(extract_dir, "from", "foo.txt"),
+            os.path.join(extract_dir, "from", "foo", "fubar", "foo.txt"),
+        ]
+
+        # When
+        with ZipFile(path, "w") as zp:
+            zp.add_tree(source_dir, True)
+
+        # Then
+        with ZipFile(path) as zp:
+            zp.extractall(extract_dir)
+            self.assertCountEqual(
+                zp.namelist(),
+                ["from/foo/", "from/foo/fubar/", "from/foo.txt", "from/foo/fubar/foo.txt"]
+            )
+
+        for f in r_files:
+            os.path.exists(f)
+            with open(f, "rb") as fp:
+                self.assertEqual(fp.read(), b"yolo")
 
 
 class TestsPermissionExtraction(unittest.TestCase):
