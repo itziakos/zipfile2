@@ -15,7 +15,7 @@ from .common import text_type
 IS_ZIPFILE_OLD_STYLE_CLASS = sys.version_info[:3] < (2, 7, 4)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
-#Enum choices for Zipfile.extractall preserve_permissions argument
+# Enum choices for Zipfile.extractall preserve_permissions argument
 PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL = range(3)
 
 
@@ -69,9 +69,9 @@ class ZipFile(zipfile.ZipFile):
 
         if path is None:
             path = os.getcwd()
- 
+
         return self._extract_member(member, path, pwd, preserve_permissions)
- 
+
     def extractall(self, path=None, members=None, pwd=None,
                    preserve_permissions=PERMS_PRESERVE_NONE):
         """ Extract all members from the archive to the current working
@@ -93,10 +93,10 @@ class ZipFile(zipfile.ZipFile):
         """
         if members is None:
             members = self.namelist()
- 
+
         for zipinfo in members:
             self.extract(zipinfo, path, pwd, preserve_permissions)
- 
+
     def extract_to(self, member, destination, path=None, pwd=None,
                    preserve_permissions=PERMS_PRESERVE_NONE):
         if not isinstance(member, zipfile.ZipInfo):
@@ -147,7 +147,7 @@ class ZipFile(zipfile.ZipFile):
             zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
         else:
             super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
-                                            compress_type)
+                                          compress_type)
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd, preserve_permissions):
@@ -218,11 +218,11 @@ class ZipFile(zipfile.ZipFile):
 
             if preserve_permissions in (PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
                 if preserve_permissions == PERMS_PRESERVE_ALL:
-                    #preserve bits 0-11: sugrwxrwxrwx, this include
-                    #sticky bit, uid bit, gid bit
+                    # preserve bits 0-11: sugrwxrwxrwx, this include
+                    # sticky bit, uid bit, gid bit
                     mode = member.external_attr >> 16 & 0xFFF
                 elif PERMS_PRESERVE_SAFE:
-                    #preserve bits 0-8 only: rwxrwxrwx
+                    # preserve bits 0-8 only: rwxrwxrwx
                     mode = member.external_attr >> 16 & 0x1FF
                 os.chmod(targetpath, mode)
 
