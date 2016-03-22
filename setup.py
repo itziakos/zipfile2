@@ -8,7 +8,7 @@ MAJOR = 0
 MINOR = 0
 MICRO = 12
 
-IS_RELEASED = False
+IS_RELEASED = True
 
 VERSION_INFO = (MAJOR, MINOR, MICRO)
 VERSION = ".".join(str(i) for i in VERSION_INFO)
