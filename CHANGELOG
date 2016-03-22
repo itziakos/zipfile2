@@ -1,3 +1,12 @@
+2016-03-22   0.0.11:
+--------------------
+
+Features:
+
+  * ZipFile correctly handles symlinks with permissions different than 0x755
+  (#35)
+
+
 2015-09-28   0.0.11:
 --------------------
 
