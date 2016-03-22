@@ -21,8 +21,8 @@ from zipfile2 import (
 
 from ..common import PY2, string_types
 from .common import (
-    NOSE_EGG, VTK_EGG, ZIP_WITH_SOFTLINK, ZIP_WITH_PERMISSIONS,
-    ZIP_WITH_SOFTLINK_AND_PERMISSIONS
+    NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
+    ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS
 )
 
 if PY2:
@@ -155,6 +155,31 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.islink(
             os.path.join(self.tempdir, "lib", "foo.so"))
         )
+
+    @unittest.skipIf(not SUPPORT_SYMLINK,
+                     "this platform does not support symlink")
+    def test_directory_softlink(self):
+        # Given
+        path = ZIP_WITH_DIRECTORY_SOFTLINK
+
+        directory_link = os.path.join("lib", "foo")
+        r_directory_link = os.path.join(self.tempdir, directory_link)
+
+        r_paths = (
+            os.path.join("lib", "foo-1", "foo.so.1.3"),
+            os.path.join("lib", "foo-1", "foo.so"),
+        )
+
+        # When
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+
+        # Then
+        paths = list_files(self.tempdir)
+        self.assertCountEqual(paths, r_paths)
+        self.assertTrue(os.path.islink(r_directory_link))
+        target = os.readlink(r_directory_link)
+        self.assertEqual(target, "foo-1")
 
     @unittest.skipIf(not SUPPORT_SYMLINK,
                      "this platform does not support symlink")

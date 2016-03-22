@@ -18,10 +18,16 @@ ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 # Enum choices for Zipfile.extractall preserve_permissions argument
 PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL = range(3)
 
+# Use octal as it is the convention used in zipinfo.c (as found in e.g. apt-get
+# source unzip)
+_UNX_IFMT   = 0o170000  # Unix file type mask
+_UNX_IFLNK  = 0o120000  # Unix symbolic link
+
 
 def is_zipinfo_symlink(zip_info):
     """Return True if the given zip_info instance refers to a symbolic link."""
-    return zip_info.external_attr == ZIP_SOFTLINK_ATTRIBUTE_MAGIC
+    mode = zip_info.external_attr >> 16
+    return (mode & _UNX_IFMT) == _UNX_IFLNK
 
 
 class ZipFile(zipfile.ZipFile):
