@@ -224,20 +224,22 @@ class TestZipFile(unittest.TestCase):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
         to = os.path.join(self.tempdir, "to")
+
         filename = os.path.relpath(__file__, os.getcwd())
+        arcname = os.path.basename(filename)
 
         # When
         with ZipFile(zipfile, "w") as zp:
-            zp.write(filename)
+            zp.write(filename, arcname)
             with self.assertRaises(ValueError):
-                zp.write(filename)
+                zp.write(filename, arcname)
 
         with ZipFile(zipfile) as zp:
             zp.extractall(to)
 
         # Then
         self.assertTrue(os.path.exists(zipfile))
-        self.assertTrue(os.path.exists(os.path.join(to, filename)))
+        self.assertTrue(os.path.exists(os.path.join(to, arcname)))
 
     def test_multiple_archives_writestr(self):
         # Given
@@ -264,8 +266,11 @@ class TestZipFile(unittest.TestCase):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
         to = os.path.join(self.tempdir, "to")
+
         filename = os.path.relpath(__file__, os.getcwd())
-        arcname = filename
+        arcname = os.path.basename(filename)
+        with open(filename, "rb") as fp:
+            r_data = fp.read()
 
         # When
         with ZipFile(zipfile, "w") as zp:
@@ -278,7 +283,10 @@ class TestZipFile(unittest.TestCase):
 
         # Then
         self.assertTrue(os.path.exists(zipfile))
-        self.assertTrue(os.path.exists(os.path.join(to, filename)))
+        archive_path = os.path.join(to, arcname)
+        self.assertTrue(os.path.exists(archive_path))
+        with open(archive_path, "rb") as fp:
+            self.assertEqual(fp.read(), r_data)
 
     def test_multiple_archives_read(self):
         # Given
