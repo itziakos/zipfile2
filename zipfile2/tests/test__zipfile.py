@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import errno
 import hashlib
 import os
@@ -9,30 +7,20 @@ import stat
 import sys
 import tempfile
 import zipfile
+import unittest
+import io
 
-if sys.version_info[:2] < (2, 7):
-    import unittest2 as unittest
-else:
-    import unittest
 
 from zipfile2 import (
     PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
 )
-
 from ..common import PY2, string_types
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
-    ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS
+    ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
+    skip_unless_symlink
 )
 
-if PY2:
-    import StringIO
-    BytesIO = StringIO.StringIO
-else:
-    import io
-    BytesIO = io.BytesIO
-
-SUPPORT_SYMLINK = hasattr(os, "symlink")
 
 HERE = os.path.dirname(__file__)
 
@@ -135,12 +123,11 @@ class TestZipFile(unittest.TestCase):
             extracted_data = zp.read(arcname)
         self.assertTrue(os.path.exists(os.path.join(self.tempdir, "FOO")))
         self.assertEqual(compute_md5(os.path.join(self.tempdir, "FOO")),
-                         compute_md5(BytesIO(extracted_data)))
+                         compute_md5(io.BytesIO(extracted_data)))
         self.assertFalse(os.path.exists(os.path.join(self.tempdir, "EGG-INFO",
                                                      "PKG-INFO")))
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_softlink(self):
         # Given
         path = ZIP_WITH_SOFTLINK
@@ -156,8 +143,7 @@ class TestZipFile(unittest.TestCase):
             os.path.join(self.tempdir, "lib", "foo.so"))
         )
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_directory_softlink(self):
         # Given
         path = ZIP_WITH_DIRECTORY_SOFTLINK
@@ -181,8 +167,7 @@ class TestZipFile(unittest.TestCase):
         target = os.readlink(r_directory_link)
         self.assertEqual(target, "foo-1")
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_softlink_with_broken_entry(self):
         self.maxDiff = None
 
@@ -307,8 +292,7 @@ class TestZipFile(unittest.TestCase):
             with ZipFile(zipfile) as zp:
                 pass
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_write_symlink_file(self):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
@@ -342,8 +326,7 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.islink(r_symlink))
         self.assertTrue(os.readlink(r_symlink), r_real_file)
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_write_symlink_directory(self):
         # Given
         zipfile = os.path.join(self.tempdir, "foo.zip")
@@ -400,8 +383,7 @@ class TestZipFile(unittest.TestCase):
         # Then
         self.assertIsNone(zp.fp)
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_permissions(self):
         # Given
         path = ZIP_WITH_PERMISSIONS
@@ -422,8 +404,7 @@ class TestZipFile(unittest.TestCase):
         self.assertTrue(os.path.exists(target))
         self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), r_mode)
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_existing_symlink_replacement(self):
         # Ensure that when we overwrite an existing file with extract* methods,
         # we don't fail in the case a file already exists but is a symlink to a
@@ -663,8 +644,7 @@ class TestsPermissionExtraction(unittest.TestCase):
                 self.assertTrue(os.path.exists(filename))
                 self.assertEqual(os.stat(filename).st_mode & 0xFFF, mode)
 
-    @unittest.skipIf(not SUPPORT_SYMLINK,
-                     "this platform does not support symlink")
+    @skip_unless_symlink
     def test_extract_preserve_safe_with_symlink(self):
         # Given
         python27 = os.path.join(self.tempdir, "bin", "python2.7")
