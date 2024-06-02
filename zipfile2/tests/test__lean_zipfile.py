@@ -1,14 +1,8 @@
-from __future__ import absolute_import
-
 import os.path
 import shutil
 import sys
 import tempfile
-
-if sys.version_info[:2] < (2, 7):
-    import unittest2 as unittest
-else:
-    import unittest
+import unittest
 
 from zipfile2 import TooManyFiles
 
