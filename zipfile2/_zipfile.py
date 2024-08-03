@@ -1,27 +1,24 @@
-from __future__ import absolute_import
-
 import errno
 import os
 import shutil
 import stat
 import string
-import sys
 import time
 import zipfile
 
 from .common import text_type
 
 
-IS_ZIPFILE_OLD_STYLE_CLASS = sys.version_info[:3] < (2, 7, 4)
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
 # Enum choices for Zipfile.extractall preserve_permissions argument
 PERMS_PRESERVE_NONE, PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL = range(3)
 
+
 # Use octal as it is the convention used in zipinfo.c (as found in e.g. apt-get
 # source unzip)
-_UNX_IFMT   = 0o170000  # Unix file type mask
-_UNX_IFLNK  = 0o120000  # Unix symbolic link
+_UNX_IFMT = 0o170000  # Unix file type mask
+_UNX_IFLNK = 0o120000  # Unix symbolic link
 
 
 def is_zipinfo_symlink(zip_info):
@@ -53,10 +50,7 @@ class ZipFile(zipfile.ZipFile):
             If False, will raise an error when adding an already existing
             archive.
         """
-        if IS_ZIPFILE_OLD_STYLE_CLASS:
-            zipfile.ZipFile.__init__(self, file, mode, compression, allowZip64)
-        else:
-            super(ZipFile, self).__init__(file, mode, compression, allowZip64)
+        super(ZipFile, self).__init__(file, mode, compression, allowZip64)
 
         self.low_level = low_level
 
@@ -158,10 +152,7 @@ class ZipFile(zipfile.ZipFile):
             zip_info.external_attr = ZIP_SOFTLINK_ATTRIBUTE_MAGIC
             self.writestr(zip_info, os.readlink(filename))
         else:
-            if IS_ZIPFILE_OLD_STYLE_CLASS:
-                zipfile.ZipFile.write(self, filename, arcname, compress_type)
-            else:
-                super(ZipFile, self).write(filename, arcname, compress_type)
+            super(ZipFile, self).write(filename, arcname, compress_type)
             self._filenames_set.add(arcname)
 
     def writestr(self, zinfo_or_arcname, bytes, compress_type=None):
@@ -173,11 +164,7 @@ class ZipFile(zipfile.ZipFile):
         self._ensure_uniqueness(arcname)
 
         self._filenames_set.add(arcname)
-        if IS_ZIPFILE_OLD_STYLE_CLASS:
-            zipfile.ZipFile.writestr(self, zinfo_or_arcname, bytes)
-        else:
-            super(ZipFile, self).writestr(zinfo_or_arcname, bytes,
-                                          compress_type)
+        super(ZipFile, self).writestr(zinfo_or_arcname, bytes, compress_type)
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd, preserve_permissions):
@@ -246,7 +233,8 @@ class ZipFile(zipfile.ZipFile):
             finally:
                 source.close()
 
-            if preserve_permissions in (PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
+            if preserve_permissions in (
+                    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL):
                 if preserve_permissions == PERMS_PRESERVE_ALL:
                     # preserve bits 0-11: sugrwxrwxrwx, this include
                     # sticky bit, uid bit, gid bit
