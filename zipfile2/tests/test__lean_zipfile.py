@@ -1,14 +1,12 @@
-import os.path
 import shutil
-import sys
 import tempfile
 import unittest
 
-from zipfile2 import TooManyFiles
 
+from zipfile2 import TooManyFiles
 from .._lean_zipfile import LeanZipFile
 
-from .common import NOSE_EGG, NOSE_SPEC_DEPEND, VTK_EGG, ZIP_WITH_SOFTLINK
+from .common import NOSE_EGG, NOSE_SPEC_DEPEND
 
 
 class TestLeanZipFile(unittest.TestCase):

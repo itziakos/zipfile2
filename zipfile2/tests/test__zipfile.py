@@ -12,14 +12,12 @@ import io
 
 
 from zipfile2 import (
-    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
-)
+    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile)
 from ..common import PY2, string_types
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
     ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
-    skip_unless_symlink
-)
+    skip_unless_symlink)
 
 
 HERE = os.path.dirname(__file__)
@@ -528,8 +526,11 @@ class TestZipFile(unittest.TestCase):
             zp.extractall(extract_dir)
             self.assertCountEqual(
                 zp.namelist(),
-                ["from/foo/", "from/foo/fubar/", "from/foo.txt", "from/foo/fubar/foo.txt"]
-            )
+                [
+                    "from/foo/",
+                    "from/foo/fubar/",
+                    "from/foo.txt",
+                    "from/foo/fubar/foo.txt"])
 
         for f in r_files:
             os.path.exists(f)
