@@ -6,9 +6,6 @@ import string
 import time
 import zipfile
 
-from .common import text_type
-
-
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
 # Enum choices for Zipfile.extractall preserve_permissions argument
@@ -201,7 +198,7 @@ class ZipFile(zipfile.ZipFile):
         if os.path.sep == '\\':
             # filter illegal characters on Windows
             illegal = ':<>|"?*'
-            if isinstance(arcname, text_type):
+            if isinstance(arcname, str):
                 table = dict((ord(c), ord('_')) for c in illegal)
             else:
                 table = string.maketrans(illegal, '_' * len(illegal))

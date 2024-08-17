@@ -13,7 +13,6 @@ import io
 
 from zipfile2 import (
     PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile)
-from ..common import PY2, string_types
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
     ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
@@ -54,7 +53,7 @@ def compute_md5(path):
                 break
         return m.hexdigest()
 
-    if isinstance(path, string_types):
+    if isinstance(path, str):
         with open(path, "rb") as fp:
             return _compute_checksum(fp)
     else:
@@ -75,10 +74,6 @@ class TestZipFile(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tempdir2)
         shutil.rmtree(self.tempdir)
-
-    if PY2:
-        def assertCountEqual(self, first, second, msg=None):
-            return self.assertItemsEqual(first, second, msg)
 
     def test_simple(self):
         # Given
