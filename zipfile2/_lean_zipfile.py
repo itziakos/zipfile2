@@ -27,9 +27,10 @@ from zipfile import (
     stringFileHeader,
     structCentralDir,
     structFileHeader,
+    crc32
 )
 
-from .common import TooManyFiles
+from .common import TooManyFiles, PY312
 
 _UTF8_EXTENSION_FLAG = 0x800
 
@@ -121,6 +122,7 @@ class LeanZipFile(object):
             if centdir[_CD_SIGNATURE] != stringCentralDir:
                 raise BadZipFile("Bad magic number for central directory")
             filename = fp.read(centdir[_CD_FILENAME_LENGTH])
+            orig_filename_crc = crc32(filename)
             flags = centdir[5]
             if flags & _UTF8_EXTENSION_FLAG:
                 # UTF-8 file names extension
@@ -144,8 +146,10 @@ class LeanZipFile(object):
             x._raw_time = t
             x.date_time = ((d >> 9) + 1980, (d >> 5) & 0xF, d & 0x1F,
                            t >> 11, (t >> 5) & 0x3F, (t & 0x1F) * 2)
-
-            x._decodeExtra()
+            if PY312:
+                x._decodeExtra(orig_filename_crc)
+            else:
+                x._decodeExtra()
             x.header_offset = x.header_offset + concat
 
             # update total bytes read from central directory
