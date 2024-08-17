@@ -200,9 +200,11 @@ def skip_unless_symlink(test):
 
 
 def repeat_rmtree(*args, **kwargs):
-        # Windows rmtree might fail the first time
-        for _ in range(5):
-            try:
-                shutil.rmtree(*args, **kwargs)
-            except Exception:
-                pass
+    # Windows rmtree might fail the first time
+    for _ in range(5):
+        try:
+            shutil.rmtree(*args, **kwargs)
+        except Exception:
+            pass
+        else:
+            break
