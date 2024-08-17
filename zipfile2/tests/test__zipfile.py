@@ -577,7 +577,12 @@ class TestsPermissionExtraction(unittest.TestCase):
                 os.remove(path)
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir, onerror=handle_readonly)
+        # Windows rmtree might fail the first time
+        for _ in range(5):
+            try:
+                shutil.rmtree(self.tempdir, onerror=handle_readonly)
+            except Exception:
+                pass
 
     def test_extractall_preserve_none(self):
         umask = os.umask(0)
