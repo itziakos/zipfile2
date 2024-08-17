@@ -1,8 +1,9 @@
+import sys
 import zipfile
-import platform
 
-PYTHON_VERSION = tuple(map(int, platform.python_version_tuple()))
-PY312 = PYTHON_VERSION >= (3, 12, 0)
+
+PYTHON_VERSION = sys.version_info[:2]
+PY312 = PYTHON_VERSION >= (3, 12)
 
 
 class TooManyFiles(zipfile.BadZipfile):
