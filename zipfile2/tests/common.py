@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import unittest
 
 HERE = os.path.dirname(__file__)
@@ -196,3 +197,12 @@ def skip_unless_symlink(test):
     ok = can_symlink()
     msg = "Requires functional symlink implementation"
     return test if ok else unittest.skip(msg)(test)
+
+
+def repeat_rmtree(*args, **kwargs):
+        # Windows rmtree might fail the first time
+        for _ in range(5):
+            try:
+                shutil.rmtree(*args, **kwargs)
+            except Exception:
+                pass

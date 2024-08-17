@@ -16,7 +16,7 @@ from zipfile2 import (
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
     ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
-    skip_unless_symlink)
+    skip_unless_symlink, repeat_rmtree)
 
 
 HERE = os.path.dirname(__file__)
@@ -72,8 +72,8 @@ class TestZipFile(unittest.TestCase):
         self.tempdir2 = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir2)
-        shutil.rmtree(self.tempdir)
+        repeat_rmtree(self.tempdir2)
+        repeat_rmtree(self.tempdir)
 
     def test_simple(self):
         # Given
@@ -577,12 +577,7 @@ class TestsPermissionExtraction(unittest.TestCase):
                 os.remove(path)
 
     def tearDown(self):
-        # Windows rmtree might fail the first time
-        for _ in range(5):
-            try:
-                shutil.rmtree(self.tempdir, onerror=handle_readonly)
-            except Exception:
-                pass
+        repeat_rmtree(self.tempdir, onerror=handle_readonly)
 
     def test_extractall_preserve_none(self):
         umask = os.umask(0)
