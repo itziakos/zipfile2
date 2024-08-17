@@ -2,7 +2,6 @@ import errno
 import hashlib
 import os
 import os.path
-import shutil
 import stat
 import sys
 import tempfile
