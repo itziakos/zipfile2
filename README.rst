@@ -1,6 +1,3 @@
-.. image:: https://travis-ci.org/cournape/zipfile2.png?branch=master
-    :target: https://travis-ci.org/cournape/zipfile2
-
 zipfile2 contains an improved ZipFile class that may be used as a 100 %
 backward compatible replacement.
 
