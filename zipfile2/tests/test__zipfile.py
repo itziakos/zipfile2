@@ -2,7 +2,6 @@ import errno
 import hashlib
 import os
 import os.path
-import shutil
 import stat
 import sys
 import tempfile
@@ -12,14 +11,11 @@ import io
 
 
 from zipfile2 import (
-    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile
-)
-from ..common import PY2, string_types
+    PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile)
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
     ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
-    skip_unless_symlink
-)
+    skip_unless_symlink, repeat_rmtree)
 
 
 HERE = os.path.dirname(__file__)
@@ -56,7 +52,7 @@ def compute_md5(path):
                 break
         return m.hexdigest()
 
-    if isinstance(path, string_types):
+    if isinstance(path, str):
         with open(path, "rb") as fp:
             return _compute_checksum(fp)
     else:
@@ -75,12 +71,8 @@ class TestZipFile(unittest.TestCase):
         self.tempdir2 = tempfile.mkdtemp()
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir2)
-        shutil.rmtree(self.tempdir)
-
-    if PY2:
-        def assertCountEqual(self, first, second, msg=None):
-            return self.assertItemsEqual(first, second, msg)
+        repeat_rmtree(self.tempdir2)
+        repeat_rmtree(self.tempdir)
 
     def test_simple(self):
         # Given
@@ -528,8 +520,11 @@ class TestZipFile(unittest.TestCase):
             zp.extractall(extract_dir)
             self.assertCountEqual(
                 zp.namelist(),
-                ["from/foo/", "from/foo/fubar/", "from/foo.txt", "from/foo/fubar/foo.txt"]
-            )
+                [
+                    "from/foo/",
+                    "from/foo/fubar/",
+                    "from/foo.txt",
+                    "from/foo/fubar/foo.txt"])
 
         for f in r_files:
             os.path.exists(f)
@@ -581,7 +576,7 @@ class TestsPermissionExtraction(unittest.TestCase):
                 os.remove(path)
 
     def tearDown(self):
-        shutil.rmtree(self.tempdir, onerror=handle_readonly)
+        repeat_rmtree(self.tempdir, onerror=handle_readonly)
 
     def test_extractall_preserve_none(self):
         umask = os.umask(0)

@@ -1,1 +1,7 @@
 include LICENSE
+include CHANGELOG
+include *.rst
+include *.txt
+include *.cfg
+recursive-include docs *.bat *.py *.rst
+include docs/Makefile

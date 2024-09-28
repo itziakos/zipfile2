@@ -1,80 +1,38 @@
-from __future__ import absolute_import
-
 import struct
-import sys
+from io import BytesIO
+from zipfile import (
+    BadZipFile,
+    MAX_EXTRACT_VERSION,
+    ZipExtFile,
+    ZipInfo,
+    _CD_COMMENT_LENGTH,
+    _CD_EXTRA_FIELD_LENGTH,
+    _CD_FILENAME_LENGTH,
+    _CD_LOCAL_HEADER_OFFSET,
+    _CD_SIGNATURE,
+    _ECD_LOCATION,
+    _ECD_OFFSET,
+    _ECD_SIGNATURE,
+    _ECD_SIZE,
+    _EndRecData,
+    _FH_EXTRA_FIELD_LENGTH,
+    _FH_FILENAME_LENGTH,
+    _FH_SIGNATURE,
+    sizeCentralDir,
+    sizeEndCentDir64,
+    sizeEndCentDir64Locator,
+    sizeFileHeader,
+    stringCentralDir,
+    stringEndArchive64,
+    stringFileHeader,
+    structCentralDir,
+    structFileHeader,
+    crc32
+)
 
-from .common import PY2, BytesIO, string_types
-
-if PY2:
-    MAX_EXTRACT_VERSION = 63
-    from zipfile import (
-        BadZipfile as BadZipFile,
-        ZipExtFile,
-        ZipInfo,
-        _CD_COMMENT_LENGTH,
-        _CD_EXTRA_FIELD_LENGTH,
-        _CD_FILENAME_LENGTH,
-        _CD_LOCAL_HEADER_OFFSET,
-        _CD_SIGNATURE,
-        _ECD_LOCATION,
-        _ECD_OFFSET,
-        _ECD_SIGNATURE,
-        _ECD_SIZE,
-        _EndRecData,
-        _FH_EXTRA_FIELD_LENGTH,
-        _FH_FILENAME_LENGTH,
-        _FH_SIGNATURE,
-        sizeCentralDir,
-        sizeEndCentDir64,
-        sizeEndCentDir64Locator,
-        sizeFileHeader,
-        stringCentralDir,
-        stringEndArchive64,
-        stringFileHeader,
-        structCentralDir,
-        structFileHeader,
-    )
-else:
-    from zipfile import (
-        BadZipFile,
-        MAX_EXTRACT_VERSION,
-        ZipExtFile,
-        ZipInfo,
-        _CD_COMMENT_LENGTH,
-        _CD_EXTRA_FIELD_LENGTH,
-        _CD_FILENAME_LENGTH,
-        _CD_LOCAL_HEADER_OFFSET,
-        _CD_SIGNATURE,
-        _ECD_LOCATION,
-        _ECD_OFFSET,
-        _ECD_SIGNATURE,
-        _ECD_SIZE,
-        _EndRecData,
-        _FH_EXTRA_FIELD_LENGTH,
-        _FH_FILENAME_LENGTH,
-        _FH_SIGNATURE,
-        sizeCentralDir,
-        sizeEndCentDir64,
-        sizeEndCentDir64Locator,
-        sizeFileHeader,
-        stringCentralDir,
-        stringEndArchive64,
-        stringFileHeader,
-        structCentralDir,
-        structFileHeader,
-    )
-
-from .common import TooManyFiles
+from .common import TooManyFiles, PY312
 
 _UTF8_EXTENSION_FLAG = 0x800
-
-if sys.version_info[:2] < (2, 7):
-    class _ZipExtFile(ZipExtFile):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a, **kw):
-            self.close()
 
 
 class LeanZipFile(object):
@@ -164,6 +122,7 @@ class LeanZipFile(object):
             if centdir[_CD_SIGNATURE] != stringCentralDir:
                 raise BadZipFile("Bad magic number for central directory")
             filename = fp.read(centdir[_CD_FILENAME_LENGTH])
+            orig_filename_crc = crc32(filename)
             flags = centdir[5]
             if flags & _UTF8_EXTENSION_FLAG:
                 # UTF-8 file names extension
@@ -187,8 +146,10 @@ class LeanZipFile(object):
             x._raw_time = t
             x.date_time = ((d >> 9) + 1980, (d >> 5) & 0xF, d & 0x1F,
                            t >> 11, (t >> 5) & 0x3F, (t & 0x1F) * 2)
-
-            x._decodeExtra()
+            if PY312:
+                x._decodeExtra(orig_filename_crc)
+            else:
+                x._decodeExtra()
             x.header_offset = x.header_offset + concat
 
             # update total bytes read from central directory
@@ -247,12 +208,7 @@ class LeanZipFile(object):
                 'File name in directory %r and header %r differ.'
                 % (zinfo.orig_filename, fname))
 
-        if sys.version_info[:2] < (2, 7):
-            return _ZipExtFile(zef_file, zinfo)
-        elif sys.version_info[:2] < (3, 4) and sys.platform == 'win32':
-                return ZipExtFile(zef_file, 'r', zinfo)
-        else:
-            return ZipExtFile(zef_file, 'r', zinfo, None, close_fileobj=False)
+        return ZipExtFile(zef_file, 'r', zinfo, None, close_fileobj=False)
 
     def read(self, zinfo_or_name):
         """Return file bytes (as a string) for the given ZipInfo object or
@@ -269,7 +225,7 @@ class LeanZipFile(object):
         Will raise an error if more than one member is found with the
         given name.
         """
-        if isinstance(zinfo_or_name, string_types):
+        if isinstance(zinfo_or_name, str):
             candidates = list(self.get_zip_infos(zinfo_or_name))
             if len(candidates) < 1:
                 msg = "There is no item named {0!r} found in the archive"

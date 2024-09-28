@@ -1,10 +1,9 @@
-zipfile2 contains an improved ZipFile class that may be used as a 100 %
+zipfile2 contains an improved ZipFile class that may be used as a
 backward compatible replacement.
 
 Improvements compared to upstream zipfile stdlib:
 
 * Handling of symlinks (read and write)
-* Compatible 2.6 onwards (including 3.x), include context manager
 * Raises an exception by default when duplicate members are detected.
 * Special class `LeanZipFile` to avoid using too much memory when handling
   zip files with a large number of members. Contrary to the stdlib
