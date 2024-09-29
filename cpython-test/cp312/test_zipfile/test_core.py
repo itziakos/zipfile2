@@ -1561,13 +1561,13 @@ class OverwriteTests(archiver_tests.OverwriteTests, unittest.TestCase):
 class OtherTests(unittest.TestCase):
     def test_open_via_zip_info(self):
         # Create the ZIP archive
-        with zipfile2.ZipFile(TESTFN2, "w", zipfile.ZIP_STORED) as zipfp:
+        with zipfile2.ZipFile(TESTFN2, "w", zipfile.ZIP_STORED, low_level=True) as zipfp:
             zipfp.writestr("name", "foo")
             with self.assertWarns(UserWarning):
                 zipfp.writestr("name", "bar")
             self.assertEqual(zipfp.namelist(), ["name"] * 2)
 
-        with zipfile2.ZipFile(TESTFN2, "r") as zipfp:
+        with zipfile2.ZipFile(TESTFN2, "r", low_level=True) as zipfp:
             infos = zipfp.infolist()
             data = b""
             for info in infos:
