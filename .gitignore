@@ -2,3 +2,4 @@ build
 .tox
 zipfile2/_version.py
 zipfile2*egg-info
+__pycache__
