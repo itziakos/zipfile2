@@ -26,7 +26,7 @@ jobs:
     - name: Test with haas
       run: python -m haas zipfile2
     - name: Integration tests
-      run: python -m haas cpython/${{ matrix.python-version }}
+      run: python -m haas cpython-tests/${{ matrix.python-version }}
 
   code-lint:
     runs-on: ubuntu-latest
