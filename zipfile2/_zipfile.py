@@ -5,6 +5,9 @@ import stat
 import string
 import time
 import zipfile
+import warnings
+
+from .common import PY311, metadata_encoding_warning
 
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
@@ -56,10 +59,18 @@ class ZipFile(zipfile.ZipFile):
             archive.
 
         """
-        super(ZipFile, self).__init__(
-            file, mode, compression, allowZip64, compresslevel,
-            strict_timestamps=strict_timestamps,
-            metadata_encoding=metadata_encoding)
+        if PY311:
+            super(ZipFile, self).__init__(
+                file, mode, compression, allowZip64, compresslevel,
+                strict_timestamps=strict_timestamps,
+                metadata_encoding=metadata_encoding)
+        else:
+            if metadata_encoding is not None:
+                warnings.warn(metadata_encoding_warning)
+            super(ZipFile, self).__init__(
+                file, mode, compression, allowZip64, compresslevel,
+                strict_timestamps=strict_timestamps)
+
         self.low_level = low_level
 
         # Set of filenames currently in file
