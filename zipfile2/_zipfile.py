@@ -58,7 +58,8 @@ class ZipFile(zipfile.ZipFile):
         """
         super(ZipFile, self).__init__(
             file, mode, compression, allowZip64, compresslevel,
-            strict_timestamps=strict_timestamps, metadata_encoding=metadata_encoding)
+            strict_timestamps=strict_timestamps,
+            metadata_encoding=metadata_encoding)
         self.low_level = low_level
 
         # Set of filenames currently in file
