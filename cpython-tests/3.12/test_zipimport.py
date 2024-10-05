@@ -13,7 +13,7 @@ from test import support
 from test.support import import_helper
 from test.support import os_helper
 
-from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
+from zipfile import ZipInfo, ZIP_STORED, ZIP_DEFLATED
 
 import zipimport
 import linecache
@@ -25,6 +25,9 @@ try:
     import zlib
 except ImportError:
     zlib = None
+
+from zipfile2 import ZipFile
+
 
 test_src = """\
 def get_name():
