@@ -147,14 +147,12 @@ class ZipFile(zipfile.ZipFile):
 
     def extract_to(self, member, destination, path=None, pwd=None,
                    preserve_permissions=PERMS_PRESERVE_NONE):
+
         if not isinstance(member, zipfile.ZipInfo):
             member = self.getinfo(member)
 
-        if path is None:
-            path = os.getcwd()
-
-        return self._extract_member_to(member, destination, path, pwd,
-                                       preserve_permissions)
+        return self._extract_member_to(
+            member, destination, path, pwd, preserve_permissions)
 
     def write(
             self, filename, arcname=None,
@@ -223,20 +221,14 @@ class ZipFile(zipfile.ZipFile):
         # interpret absolute pathname as relative, remove drive letter or
         # UNC path, redundant separators, "." and ".." components.
         arcname = os.path.splitdrive(arcname)[1]
-        arcname = os.path.sep.join(x for x in arcname.split(os.path.sep)
-                                   if x not in ('', os.path.curdir,
-                                                os.path.pardir))
+        invalid_path_parts = ('', os.path.curdir, os.path.pardir)
+        arcname = os.path.sep.join(
+            x for x in arcname.split(os.path.sep)
+            if x not in invalid_path_parts)
+
         if os.path.sep == '\\':
             # filter illegal characters on Windows
-            illegal = ':<>|"?*'
-            if isinstance(arcname, str):
-                table = dict((ord(c), ord('_')) for c in illegal)
-            else:
-                table = string.maketrans(illegal, '_' * len(illegal))
-            arcname = arcname.translate(table)
-            # remove trailing dots
-            arcname = (x.rstrip('.') for x in arcname.split(os.path.sep))
-            arcname = os.path.sep.join(x for x in arcname if x)
+            arcname = self._sanitize_windows_name(arcname, os.path.sep)
 
         targetpath = os.path.join(targetpath, arcname)
         targetpath = os.path.normpath(targetpath)
@@ -246,7 +238,7 @@ class ZipFile(zipfile.ZipFile):
         if upperdirs and not os.path.exists(upperdirs):
             os.makedirs(upperdirs)
 
-        if member.filename[-1] == '/':
+        if member.is_dir():
             if not os.path.isdir(targetpath):
                 os.mkdir(targetpath)
             return targetpath
