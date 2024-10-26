@@ -2,7 +2,6 @@ import errno
 import os
 import shutil
 import stat
-import string
 import time
 import zipfile
 import warnings
