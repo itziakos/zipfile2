@@ -3045,7 +3045,7 @@ class TestPath(unittest.TestCase):
     def test_encoding_warnings(self):
         """EncodingWarning must blame the read_text and open calls."""
         code = '''\
-import io, zipfile
+import io, zipfile2, zipfile
 with zipfile2.ZipFile(io.BytesIO(), "w") as zf:
     zf.filename = '<test_encoding_warnings in memory zip file>'
     zf.writestr("path/file.txt", b"Spanish Inquisition")
