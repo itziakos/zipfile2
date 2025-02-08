@@ -883,10 +883,9 @@ class StoredTestZip64InSmallFiles(AbstractTestZip64InSmallFiles,
             self.assertEqual(zinfo.extra, extra)
 
     def make_zip64_file(
-        self, file_size_64_set=False, file_size_extra=False,
-        compress_size_64_set=False, compress_size_extra=False,
-        header_offset_64_set=False, header_offset_extra=False,
-    ):
+            self, file_size_64_set=False, file_size_extra=False,
+            compress_size_64_set=False, compress_size_extra=False,
+            header_offset_64_set=False, header_offset_extra=False,):
         """Generate bytes sequence for a zip with (incomplete) zip64 data.
 
         The actual values (not the zip 64 0xffffffff values) stored in the file
@@ -1556,6 +1555,12 @@ class OverwriteTests(archiver_tests.OverwriteTests, unittest.TestCase):
 
     def extractall(self, ar):
         ar.extractall(self.testdir)
+
+    def test_overwrite_file_symlink_as_file(self):
+        self.skipTest('Zipfile2 will overwrite symlinks with a real file')
+
+    def test_overwrite_broken_file_symlink_as_file(self):
+        self.skipTest('Zipfile2 will overwrite symlinks with a real file')
 
 
 class OtherTests(unittest.TestCase):
