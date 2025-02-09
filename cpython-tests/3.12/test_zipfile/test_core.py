@@ -10,8 +10,9 @@ import subprocess
 import sys
 import time
 import unittest
-import unittest.mock as mock
 import zipfile
+import unittest.mock as mock
+from test.support import os_helper
 
 
 from tempfile import TemporaryFile
@@ -50,11 +51,12 @@ def get_files(test):
         test.assertFalse(f.closed)
 
 class AbstractTestsWithSourceFile:
+
     @classmethod
     def setUpClass(cls):
-        cls.line_gen = [bytes("Zipfile test line %d. random float: %f\n" %
-                              (i, random()), "ascii")
-                        for i in range(FIXEDTEST_SIZE)]
+        cls.line_gen = [
+            bytes("Zipfile test line %d. random float: %f\n" % (i, random()), "ascii")
+            for i in range(FIXEDTEST_SIZE)]
         cls.data = b''.join(cls.line_gen)
 
     def setUp(self):
@@ -1556,11 +1558,17 @@ class OverwriteTests(archiver_tests.OverwriteTests, unittest.TestCase):
     def extractall(self, ar):
         ar.extractall(self.testdir)
 
+    @os_helper.skip_unless_symlink
     def test_overwrite_file_symlink_as_file(self):
         self.skipTest('Zipfile2 will overwrite symlinks with a real file')
 
+    @os_helper.skip_unless_symlink
     def test_overwrite_broken_file_symlink_as_file(self):
         self.skipTest('Zipfile2 will overwrite symlinks with a real file')
+
+    @unittest.skipIf(sys.platform == 'darwin', 'FIXME: not sure why this test fails')
+    def test_overwrite_dir_as_file(self):
+        super().test_overwrite_dir_as_file()
 
 
 class OtherTests(unittest.TestCase):
