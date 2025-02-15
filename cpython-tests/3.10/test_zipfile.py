@@ -2092,6 +2092,7 @@ class OtherTests(unittest.TestCase):
                 zipf.read('b')
 
     @requires_zlib()
+    @unittest.skipIf(sys.version_info < (3, 10, 14), "Behaviour not supported in Python < 3.10.14")
     def test_quoted_overlap(self):
         data = (
             b'PK\x03\x04\x14\x00\x00\x00\x08\x00\xa0lH\x05Y\xfc'
