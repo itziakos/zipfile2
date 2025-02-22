@@ -3012,6 +3012,8 @@ class TestPath(unittest.TestCase):
         data = ['/'.join(string.ascii_lowercase + str(n)) for n in range(10000)]
         zipfile.CompleteDirs._implied_dirs(data)
 
+    @requires_zlib
+    @unittest.skipIf(sys.version_info < (3, 8, 20), "Issue fixed in Python >= 3.8.20")
     def test_malformed_paths(self):
         """
         Path should handle malformed paths gracefully.

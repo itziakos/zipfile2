@@ -3284,6 +3284,7 @@ with zipfile2.ZipFile(io.BytesIO(), "w") as zf:
         zipfile.Path(zf)
         zf.extractall(source_path.parent)
 
+    @unittest.skipIf(sys.version_info < (3, 10, 15), "Issue fixed in Python >= 3.9.15")
     def test_malformed_paths(self):
         """
         Path should handle malformed paths gracefully.
