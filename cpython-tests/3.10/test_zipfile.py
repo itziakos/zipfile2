@@ -3284,7 +3284,7 @@ with zipfile2.ZipFile(io.BytesIO(), "w") as zf:
         zipfile.Path(zf)
         zf.extractall(source_path.parent)
 
-    @unittest.skipIf(sys.version_info < (3, 10, 15), "Issue fixed in Python >= 3.9.15")
+    @unittest.skipIf(sys.version_info < (3, 10, 15), "Issue fixed in Python >= 3.10.15")
     def test_malformed_paths(self):
         """
         Path should handle malformed paths gracefully.
@@ -3303,6 +3303,7 @@ with zipfile2.ZipFile(io.BytesIO(), "w") as zf:
         assert list(map(str, root.iterdir())) == ['../']
         assert root.joinpath('..').joinpath('parent.txt').read_bytes() == b'content'
 
+    @unittest.skipIf(sys.version_info < (3, 10, 15), "Issue fixed in Python >= 3.10.15")
     def test_unsupported_names(self):
         """
         Path segments with special characters are readable.
@@ -3323,6 +3324,7 @@ with zipfile2.ZipFile(io.BytesIO(), "w") as zf:
         assert item.name == 'V: NMS.flac', item.name
         assert root.joinpath('V: NMS.flac').read_bytes() == b"fLaC..."
 
+    @unittest.skipIf(sys.version_info < (3, 10, 15), "Issue fixed in Python >= 3.10.15")
     def test_backslash_not_separator(self):
         """
         In a zip file, backslashes are not separators.
