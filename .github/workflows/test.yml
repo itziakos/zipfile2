@@ -26,7 +26,7 @@ jobs:
     - name: Test with haas
       run: python -m haas zipfile2
     - name: Integration tests
-      run: python -m unittest discover
+      run: python -m haas .
       working-directory: cpython-tests/${{ matrix.python-version }}
 
   code-lint:
