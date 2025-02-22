@@ -27,7 +27,8 @@ from test.support import (
     captured_stdout, captured_stderr, requires_subprocess
 )
 from test.support.os_helper import (
-    TESTFN, unlink, rmtree, temp_dir, temp_cwd, fd_count, FakePath
+    TESTFN, unlink, rmtree, temp_dir, temp_cwd, fd_count, FakePath,
+    skip_unless_symlink
 )
 
 
@@ -1751,11 +1752,11 @@ class OverwriteTests(archiver_tests.OverwriteTests, unittest.TestCase):
     def extractall(self, ar):
         ar.extractall(self.testdir)
 
-    @os_helper.skip_unless_symlink
+    @skip_unless_symlink
     def test_overwrite_file_symlink_as_file(self):
         self.skipTest('Zipfile2 will overwrite symlinks with a real file')
 
-    @os_helper.skip_unless_symlink
+    @skip_unless_symlink
     def test_overwrite_broken_file_symlink_as_file(self):
         self.skipTest('Zipfile2 will overwrite symlinks with a real file')
 
