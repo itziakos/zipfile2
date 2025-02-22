@@ -1,3 +1,4 @@
+import _pyio
 import array
 import contextlib
 import importlib.util
@@ -10,9 +11,8 @@ import subprocess
 import sys
 import time
 import unittest
-import zipfile
 import unittest.mock as mock
-from test.support import os_helper
+import zipfile
 
 
 from tempfile import TemporaryFile
@@ -51,12 +51,11 @@ def get_files(test):
         test.assertFalse(f.closed)
 
 class AbstractTestsWithSourceFile:
-
     @classmethod
     def setUpClass(cls):
-        cls.line_gen = [
-            bytes("Zipfile test line %d. random float: %f\n" % (i, random()), "ascii")
-            for i in range(FIXEDTEST_SIZE)]
+        cls.line_gen = [bytes("Zipfile test line %d. random float: %f\n" %
+                              (i, random()), "ascii")
+                        for i in range(FIXEDTEST_SIZE)]
         cls.data = b''.join(cls.line_gen)
 
     def setUp(self):
@@ -885,9 +884,10 @@ class StoredTestZip64InSmallFiles(AbstractTestZip64InSmallFiles,
             self.assertEqual(zinfo.extra, extra)
 
     def make_zip64_file(
-            self, file_size_64_set=False, file_size_extra=False,
-            compress_size_64_set=False, compress_size_extra=False,
-            header_offset_64_set=False, header_offset_extra=False,):
+        self, file_size_64_set=False, file_size_extra=False,
+        compress_size_64_set=False, compress_size_extra=False,
+        header_offset_64_set=False, header_offset_extra=False,
+    ):
         """Generate bytes sequence for a zip with (incomplete) zip64 data.
 
         The actual values (not the zip 64 0xffffffff values) stored in the file
@@ -1191,7 +1191,7 @@ class StoredTestZip64InSmallFiles(AbstractTestZip64InSmallFiles,
         # in as a zip, this test looks at the raw bytes created to ensure that
         # the correct data has been generated.
         # The spec for this can be found at: https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
-        # The relevent sections for this test are:
+        # The relevant sections for this test are:
         #  - 4.3.7 for local file header
         #  - 4.3.9 for the data descriptor
         #  - 4.5.3 for zip64 extra field
@@ -1336,6 +1336,199 @@ class Bzip2WriterTests(AbstractWriterTests, unittest.TestCase):
 @requires_lzma()
 class LzmaWriterTests(AbstractWriterTests, unittest.TestCase):
     compression = zipfile.ZIP_LZMA
+
+@unittest.skip('Zipfile2 does not support PyZipFile')
+class PyZipFileTests(unittest.TestCase):
+    def assertCompiledIn(self, name, namelist):
+        if name + 'o' not in namelist:
+            self.assertIn(name + 'c', namelist)
+
+    def requiresWriteAccess(self, path):
+        # effective_ids unavailable on windows
+        if not os.access(path, os.W_OK,
+                         effective_ids=os.access in os.supports_effective_ids):
+            self.skipTest('requires write access to the installed location')
+        filename = os.path.join(path, 'test_zipfile.try')
+        try:
+            fd = os.open(filename, os.O_WRONLY | os.O_CREAT)
+            os.close(fd)
+        except Exception:
+            self.skipTest('requires write access to the installed location')
+        unlink(filename)
+
+    def test_write_pyfile(self):
+        self.requiresWriteAccess(os.path.dirname(__file__))
+        with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+            fn = __file__
+            if fn.endswith('.pyc'):
+                path_split = fn.split(os.sep)
+                if os.altsep is not None:
+                    path_split.extend(fn.split(os.altsep))
+                if '__pycache__' in path_split:
+                    fn = importlib.util.source_from_cache(fn)
+                else:
+                    fn = fn[:-1]
+
+            zipfp.writepy(fn)
+
+            bn = os.path.basename(fn)
+            self.assertNotIn(bn, zipfp.namelist())
+            self.assertCompiledIn(bn, zipfp.namelist())
+
+        with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+            fn = __file__
+            if fn.endswith('.pyc'):
+                fn = fn[:-1]
+
+            zipfp.writepy(fn, "testpackage")
+
+            bn = "%s/%s" % ("testpackage", os.path.basename(fn))
+            self.assertNotIn(bn, zipfp.namelist())
+            self.assertCompiledIn(bn, zipfp.namelist())
+
+    def test_write_python_package(self):
+        import email
+        packagedir = os.path.dirname(email.__file__)
+        self.requiresWriteAccess(packagedir)
+
+        with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+            zipfp.writepy(packagedir)
+
+            # Check for a couple of modules at different levels of the
+            # hierarchy
+            names = zipfp.namelist()
+            self.assertCompiledIn('email/__init__.py', names)
+            self.assertCompiledIn('email/mime/text.py', names)
+
+    def test_write_filtered_python_package(self):
+        import test
+        packagedir = os.path.dirname(test.__file__)
+        self.requiresWriteAccess(packagedir)
+
+        with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+
+            # first make sure that the test folder gives error messages
+            # (on the badsyntax_... files)
+            with captured_stdout() as reportSIO:
+                zipfp.writepy(packagedir)
+            reportStr = reportSIO.getvalue()
+            self.assertTrue('SyntaxError' in reportStr)
+
+            # then check that the filter works on the whole package
+            with captured_stdout() as reportSIO:
+                zipfp.writepy(packagedir, filterfunc=lambda whatever: False)
+            reportStr = reportSIO.getvalue()
+            self.assertTrue('SyntaxError' not in reportStr)
+
+            # then check that the filter works on individual files
+            def filter(path):
+                return not os.path.basename(path).startswith("bad")
+            with captured_stdout() as reportSIO, self.assertWarns(UserWarning):
+                zipfp.writepy(packagedir, filterfunc=filter)
+            reportStr = reportSIO.getvalue()
+            if reportStr:
+                print(reportStr)
+            self.assertTrue('SyntaxError' not in reportStr)
+
+    def test_write_with_optimization(self):
+        import email
+        packagedir = os.path.dirname(email.__file__)
+        self.requiresWriteAccess(packagedir)
+        optlevel = 1 if __debug__ else 0
+        ext = '.pyc'
+
+        with TemporaryFile() as t, \
+             zipfile.PyZipFile(t, "w", optimize=optlevel) as zipfp:
+            zipfp.writepy(packagedir)
+
+            names = zipfp.namelist()
+            self.assertIn('email/__init__' + ext, names)
+            self.assertIn('email/mime/text' + ext, names)
+
+    def test_write_python_directory(self):
+        os.mkdir(TESTFN2)
+        try:
+            with open(os.path.join(TESTFN2, "mod1.py"), "w", encoding='utf-8') as fp:
+                fp.write("print(42)\n")
+
+            with open(os.path.join(TESTFN2, "mod2.py"), "w", encoding='utf-8') as fp:
+                fp.write("print(42 * 42)\n")
+
+            with open(os.path.join(TESTFN2, "mod2.txt"), "w", encoding='utf-8') as fp:
+                fp.write("bla bla bla\n")
+
+            with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+                zipfp.writepy(TESTFN2)
+
+                names = zipfp.namelist()
+                self.assertCompiledIn('mod1.py', names)
+                self.assertCompiledIn('mod2.py', names)
+                self.assertNotIn('mod2.txt', names)
+
+        finally:
+            rmtree(TESTFN2)
+
+    def test_write_python_directory_filtered(self):
+        os.mkdir(TESTFN2)
+        try:
+            with open(os.path.join(TESTFN2, "mod1.py"), "w", encoding='utf-8') as fp:
+                fp.write("print(42)\n")
+
+            with open(os.path.join(TESTFN2, "mod2.py"), "w", encoding='utf-8') as fp:
+                fp.write("print(42 * 42)\n")
+
+            with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+                zipfp.writepy(TESTFN2, filterfunc=lambda fn:
+                                                  not fn.endswith('mod2.py'))
+
+                names = zipfp.namelist()
+                self.assertCompiledIn('mod1.py', names)
+                self.assertNotIn('mod2.py', names)
+
+        finally:
+            rmtree(TESTFN2)
+
+    def test_write_non_pyfile(self):
+        with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+            with open(TESTFN, 'w', encoding='utf-8') as f:
+                f.write('most definitely not a python file')
+            self.assertRaises(RuntimeError, zipfp.writepy, TESTFN)
+            unlink(TESTFN)
+
+    def test_write_pyfile_bad_syntax(self):
+        os.mkdir(TESTFN2)
+        try:
+            with open(os.path.join(TESTFN2, "mod1.py"), "w", encoding='utf-8') as fp:
+                fp.write("Bad syntax in python file\n")
+
+            with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+                # syntax errors are printed to stdout
+                with captured_stdout() as s:
+                    zipfp.writepy(os.path.join(TESTFN2, "mod1.py"))
+
+                self.assertIn("SyntaxError", s.getvalue())
+
+                # as it will not have compiled the python file, it will
+                # include the .py file not .pyc
+                names = zipfp.namelist()
+                self.assertIn('mod1.py', names)
+                self.assertNotIn('mod1.pyc', names)
+
+        finally:
+            rmtree(TESTFN2)
+
+    def test_write_pathlike(self):
+        os.mkdir(TESTFN2)
+        try:
+            with open(os.path.join(TESTFN2, "mod1.py"), "w", encoding='utf-8') as fp:
+                fp.write("print(42)\n")
+
+            with TemporaryFile() as t, zipfile.PyZipFile(t, "w") as zipfp:
+                zipfp.writepy(FakePath(os.path.join(TESTFN2, "mod1.py")))
+                names = zipfp.namelist()
+                self.assertCompiledIn('mod1.py', names)
+        finally:
+            rmtree(TESTFN2)
 
 
 class ExtractTests(unittest.TestCase):
@@ -3248,6 +3441,88 @@ class StripExtraTests(unittest.TestCase):
             b"zz", zipfile._strip_extra(b"zz", (self.ZIP64_EXTRA,)))
         self.assertEqual(
             b"zzz", zipfile._strip_extra(b"zzz", (self.ZIP64_EXTRA,)))
+
+
+class StatIO(_pyio.BytesIO):
+    """Buffer which remembers the number of bytes that were read."""
+
+    def __init__(self):
+        super().__init__()
+        self.bytes_read = 0
+
+    def read(self, size=-1):
+        bs = super().read(size)
+        self.bytes_read += len(bs)
+        return bs
+
+
+class StoredZipExtFileRandomReadTest(unittest.TestCase):
+    """Tests whether an uncompressed, unencrypted zip entry can be randomly
+    seek and read without reading redundant bytes."""
+    def test_stored_seek_and_read(self):
+
+        sio = StatIO()
+        # 20000 bytes
+        txt = b'0123456789' * 2000
+
+        # The seek length must be greater than ZipExtFile.MIN_READ_SIZE
+        # as `ZipExtFile._read2()` reads in blocks of this size and we
+        # need to seek out of the buffered data
+        read_buffer_size = zipfile.ZipExtFile.MIN_READ_SIZE
+        self.assertGreaterEqual(10002, read_buffer_size)  # for forward seek test
+        self.assertGreaterEqual(5003, read_buffer_size)  # for backward seek test
+        # The read length must be less than MIN_READ_SIZE, since we assume that
+        # only 1 block is read in the test.
+        read_length = 100
+        self.assertGreaterEqual(read_buffer_size, read_length)  # for read() calls
+
+        with zipfile2.ZipFile(sio, "w", compression=zipfile.ZIP_STORED) as zipf:
+            zipf.writestr("foo.txt", txt)
+
+        # check random seek and read on a file
+        with zipfile2.ZipFile(sio, "r") as zipf:
+            with zipf.open("foo.txt", "r") as fp:
+                # Test this optimized read hasn't rewound and read from the
+                # start of the file (as in the case of the unoptimized path)
+
+                # forward seek
+                old_count = sio.bytes_read
+                forward_seek_len = 10002
+                current_pos = 0
+                fp.seek(forward_seek_len, os.SEEK_CUR)
+                current_pos += forward_seek_len
+                self.assertEqual(fp.tell(), current_pos)
+                self.assertEqual(fp._left, fp._compress_left)
+                arr = fp.read(read_length)
+                current_pos += read_length
+                self.assertEqual(fp.tell(), current_pos)
+                self.assertEqual(arr, txt[current_pos - read_length:current_pos])
+                self.assertEqual(fp._left, fp._compress_left)
+                read_count = sio.bytes_read - old_count
+                self.assertLessEqual(read_count, read_buffer_size)
+
+                # backward seek
+                old_count = sio.bytes_read
+                backward_seek_len = 5003
+                fp.seek(-backward_seek_len, os.SEEK_CUR)
+                current_pos -= backward_seek_len
+                self.assertEqual(fp.tell(), current_pos)
+                self.assertEqual(fp._left, fp._compress_left)
+                arr = fp.read(read_length)
+                current_pos += read_length
+                self.assertEqual(fp.tell(), current_pos)
+                self.assertEqual(arr, txt[current_pos - read_length:current_pos])
+                self.assertEqual(fp._left, fp._compress_left)
+                read_count = sio.bytes_read - old_count
+                self.assertLessEqual(read_count, read_buffer_size)
+
+                # eof flags test
+                fp.seek(0, os.SEEK_END)
+                fp.seek(12345, os.SEEK_SET)
+                current_pos = 12345
+                arr = fp.read(read_length)
+                current_pos += read_length
+                self.assertEqual(arr, txt[current_pos - read_length:current_pos])
 
 
 if __name__ == "__main__":
