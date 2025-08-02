@@ -2,9 +2,11 @@ import errno
 import os
 import shutil
 import stat
-import string
 import time
 import zipfile
+import warnings
+
+from .common import PY311, metadata_encoding_warning
 
 ZIP_SOFTLINK_ATTRIBUTE_MAGIC = 0xA1ED0000
 
@@ -31,23 +33,42 @@ class ZipFile(zipfile.ZipFile):
 
     This also support context management on 2.6.
     """
-    def __init__(self, file, mode='r', compression=zipfile.ZIP_STORED,
-                 allowZip64=True, low_level=False):
-        """ Open the ZIP file.
+    def __init__(
+            self, file, mode='r', compression=zipfile.ZIP_STORED,
+            allowZip64=True, compresslevel=None, *, strict_timestamps=True,
+            metadata_encoding=None, low_level=False):
+        """Open the ZIP file.
 
         Parameters
         ----------
         file: str
             Filename
         mode: str
-            'r' for read, 'w' for write, 'a' for append
+            The mode can be either read 'r', write 'w', exclusive create 'x',
+            or append 'a'.
         compression: int
-            Which compression method to use.
+            ZIP_STORED (no compression), ZIP_DEFLATED (requires zlib),
+            ZIP_BZIP2 (requires bz2) or ZIP_LZMA (requires lzma).
+        allowZip64: bool
+            if True ZipFile will create files with ZIP64 extensions
+            when needed, otherwise it will raise an exception when
+            this would be necessary.
         low_level: bool
             If False, will raise an error when adding an already existing
             archive.
+
         """
-        super(ZipFile, self).__init__(file, mode, compression, allowZip64)
+        if PY311:
+            super(ZipFile, self).__init__(
+                file, mode, compression, allowZip64, compresslevel,
+                strict_timestamps=strict_timestamps,
+                metadata_encoding=metadata_encoding)
+        else:
+            if metadata_encoding is not None:
+                warnings.warn(metadata_encoding_warning)
+            super(ZipFile, self).__init__(
+                file, mode, compression, allowZip64, compresslevel,
+                strict_timestamps=strict_timestamps)
 
         self.low_level = low_level
 
@@ -83,18 +104,23 @@ class ZipFile(zipfile.ZipFile):
                 arcname = os.path.join(base, os.path.relpath(entry, directory))
                 self.write(entry, arcname)
 
-    def extract(self, member, path=None, pwd=None,
-                preserve_permissions=PERMS_PRESERVE_NONE):
+    def extract(
+            self, member, path=None, pwd=None,
+            preserve_permissions=PERMS_PRESERVE_NONE):
+
         if not isinstance(member, zipfile.ZipInfo):
             member = self.getinfo(member)
 
         if path is None:
             path = os.getcwd()
+        else:
+            path = os.fspath(path)
 
         return self._extract_member(member, path, pwd, preserve_permissions)
 
-    def extractall(self, path=None, members=None, pwd=None,
-                   preserve_permissions=PERMS_PRESERVE_NONE):
+    def extractall(
+            self, path=None, members=None, pwd=None,
+            preserve_permissions=PERMS_PRESERVE_NONE):
         """ Extract all members from the archive to the current working
         directory.
 
@@ -120,22 +146,20 @@ class ZipFile(zipfile.ZipFile):
 
     def extract_to(self, member, destination, path=None, pwd=None,
                    preserve_permissions=PERMS_PRESERVE_NONE):
+
         if not isinstance(member, zipfile.ZipInfo):
             member = self.getinfo(member)
 
-        if path is None:
-            path = os.getcwd()
+        return self._extract_member_to(
+            member, destination, path, pwd, preserve_permissions)
 
-        return self._extract_member_to(member, destination, path, pwd,
-                                       preserve_permissions)
-
-    def write(self, filename, arcname=None, compress_type=None):
+    def write(
+            self, filename, arcname=None,
+            compress_type=None, compresslevel=None):
         if arcname is None:
             arcname = filename
         st = os.lstat(filename)
-
         arcname = self._normalize_arcname(arcname)
-
         if stat.S_ISDIR(st.st_mode):
             arcname += '/'
 
@@ -149,24 +173,28 @@ class ZipFile(zipfile.ZipFile):
             zip_info.external_attr = ZIP_SOFTLINK_ATTRIBUTE_MAGIC
             self.writestr(zip_info, os.readlink(filename))
         else:
-            super(ZipFile, self).write(filename, arcname, compress_type)
+            super(ZipFile, self).write(
+                filename, arcname, compress_type, compresslevel)
             self._filenames_set.add(arcname)
 
-    def writestr(self, zinfo_or_arcname, bytes, compress_type=None):
+    def writestr(
+            self, zinfo_or_arcname, data,
+            compress_type=None, compresslevel=None):
         if not isinstance(zinfo_or_arcname, zipfile.ZipInfo):
             arcname = self._normalize_arcname(zinfo_or_arcname)
         else:
             arcname = zinfo_or_arcname.filename
 
         self._ensure_uniqueness(arcname)
-
         self._filenames_set.add(arcname)
-        super(ZipFile, self).writestr(zinfo_or_arcname, bytes, compress_type)
+        super(ZipFile, self).writestr(
+            zinfo_or_arcname, data, compress_type, compresslevel)
 
     # Overriden so that ZipFile.extract* support softlink
     def _extract_member(self, member, targetpath, pwd, preserve_permissions):
-        return self._extract_member_to(member, member.filename,
-                                       targetpath, pwd, preserve_permissions)
+        return self._extract_member_to(
+            member, member.filename,
+            targetpath, pwd, preserve_permissions)
 
     def _extract_symlink(self, member, link_name, pwd=None):
         source = self.read(member).decode("utf8")
@@ -192,20 +220,17 @@ class ZipFile(zipfile.ZipFile):
         # interpret absolute pathname as relative, remove drive letter or
         # UNC path, redundant separators, "." and ".." components.
         arcname = os.path.splitdrive(arcname)[1]
-        arcname = os.path.sep.join(x for x in arcname.split(os.path.sep)
-                                   if x not in ('', os.path.curdir,
-                                                os.path.pardir))
+        invalid_path_parts = ('', os.path.curdir, os.path.pardir)
+        arcname = os.path.sep.join(
+            x for x in arcname.split(os.path.sep)
+            if x not in invalid_path_parts)
+
         if os.path.sep == '\\':
             # filter illegal characters on Windows
-            illegal = ':<>|"?*'
-            if isinstance(arcname, str):
-                table = dict((ord(c), ord('_')) for c in illegal)
-            else:
-                table = string.maketrans(illegal, '_' * len(illegal))
-            arcname = arcname.translate(table)
-            # remove trailing dots
-            arcname = (x.rstrip('.') for x in arcname.split(os.path.sep))
-            arcname = os.path.sep.join(x for x in arcname if x)
+            arcname = self._sanitize_windows_name(arcname, os.path.sep)
+
+        if not arcname and not member.is_dir():
+            raise ValueError("Empty filename.")
 
         targetpath = os.path.join(targetpath, arcname)
         targetpath = os.path.normpath(targetpath)
@@ -215,7 +240,7 @@ class ZipFile(zipfile.ZipFile):
         if upperdirs and not os.path.exists(upperdirs):
             os.makedirs(upperdirs)
 
-        if member.filename[-1] == '/':
+        if member.is_dir():
             if not os.path.isdir(targetpath):
                 os.mkdir(targetpath)
             return targetpath
