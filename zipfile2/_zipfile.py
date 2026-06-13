@@ -196,8 +196,9 @@ class ZipFile(zipfile.ZipFile):
             member, member.filename,
             targetpath, pwd, preserve_permissions)
 
-    def _extract_symlink(self, member, link_name, pwd=None):
+    def _extract_symlink(self, member, link_name, rootpath):
         source = self.read(member).decode("utf8")
+        self._sanitize_path(source, rootpath, member.is_dir())
         if os.path.lexists(link_name):
             os.unlink(link_name)
         os.symlink(source, link_name)
@@ -211,29 +212,8 @@ class ZipFile(zipfile.ZipFile):
         """Extract the ZipInfo object 'member' to a physical
            file on the path targetpath.
         """
-        # build the destination pathname, replacing
-        # forward slashes to platform specific separators.
-        arcname = arcname.replace('/', os.path.sep)
-
-        if os.path.altsep:
-            arcname = arcname.replace(os.path.altsep, os.path.sep)
-        # interpret absolute pathname as relative, remove drive letter or
-        # UNC path, redundant separators, "." and ".." components.
-        arcname = os.path.splitdrive(arcname)[1]
-        invalid_path_parts = ('', os.path.curdir, os.path.pardir)
-        arcname = os.path.sep.join(
-            x for x in arcname.split(os.path.sep)
-            if x not in invalid_path_parts)
-
-        if os.path.sep == '\\':
-            # filter illegal characters on Windows
-            arcname = self._sanitize_windows_name(arcname, os.path.sep)
-
-        if not arcname and not member.is_dir():
-            raise ValueError("Empty filename.")
-
-        targetpath = os.path.join(targetpath, arcname)
-        targetpath = os.path.normpath(targetpath)
+        rootpath = targetpath
+        targetpath = self._sanitize_path(arcname, targetpath, member.is_dir)
 
         # Create all upper directories if necessary.
         upperdirs = os.path.dirname(targetpath)
@@ -245,7 +225,7 @@ class ZipFile(zipfile.ZipFile):
                 os.mkdir(targetpath)
             return targetpath
         elif is_zipinfo_symlink(member):
-            return self._extract_symlink(member, targetpath, pwd)
+            return self._extract_symlink(member, targetpath, rootpath)
         else:
             source = self.open(member, pwd=pwd)
             try:
@@ -265,7 +245,6 @@ class ZipFile(zipfile.ZipFile):
                     # preserve bits 0-8 only: rwxrwxrwx
                     mode = member.external_attr >> 16 & 0x1FF
                 os.chmod(targetpath, mode)
-
             return targetpath
 
     def __enter__(self):
@@ -290,6 +269,34 @@ class ZipFile(zipfile.ZipFile):
             arcname = arcname.replace(os.sep, "/")
 
         return arcname
+
+    def _sanitize_path(self, path, targetpath, is_dir):
+        # build the destination pathname, replacing
+        # forward slashes to platform specific separators.
+        path = path.replace('/', os.path.sep)
+
+        if os.path.altsep:
+            path = path.replace(os.path.altsep, os.path.sep)
+        # interpret absolute pathname as relative, remove drive letter or
+        # UNC path, redundant separators, "." and ".." components.
+        path = os.path.splitdrive(path)[1]
+        invalid_path_parts = ('', os.path.curdir, os.path.pardir)
+        path = os.path.sep.join(
+            x for x in path.split(os.path.sep)
+            if x not in invalid_path_parts)
+
+        if os.path.sep == '\\':
+            # filter illegal characters on Windows
+            path = self._sanitize_windows_name(path, os.path.sep)
+
+        if not path and not is_dir:
+            raise ValueError("Empty filename.")
+
+        path = os.path.join(targetpath, path)
+        path = os.path.normpath(path)
+        if os.path.commonpath([path, targetpath]) != targetpath:
+            raise BadZipFile("{path} outside of {targetpath}")
+        return path
 
 
 def _unlink_if_exists(p):
