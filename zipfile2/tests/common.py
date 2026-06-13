@@ -1,17 +1,19 @@
 import os
 import sys
 import shutil
+import pathlib
 import unittest
 
-HERE = os.path.dirname(__file__)
-NOSE_EGG = os.path.join(HERE, "data", "nose.egg")
-VTK_EGG = os.path.join(HERE, "data", "vtk.egg")
-ZIP_WITH_SOFTLINK = os.path.join(HERE, "data", "zip_with_softlink.zip")
-ZIP_WITH_DIRECTORY_SOFTLINK = os.path.join(
-    HERE, "data", "zip_with_directory_softlink.zip")
-ZIP_WITH_PERMISSIONS = os.path.join(HERE, "data", "zip_with_permissions.zip")
-ZIP_WITH_SOFTLINK_AND_PERMISSIONS = os.path.join(
-    HERE, "data", "zip_with_softlink_and_permissions.zip")
+HERE = pathlib.Path(__file__).parent
+DATA = HERE / 'data'
+NOSE_EGG = DATA / 'nose.egg'
+VTK_EGG = DATA / 'vtk.egg'
+ZIP_WITH_SOFTLINK = DATA / 'zip_with_softlink.zip'
+ZIP_WITH_DIRECTORY_SOFTLINK = DATA / 'zip_with_directory_softlink.zip'
+ZIP_WITH_PERMISSIONS = DATA / 'zip_with_permissions.zip'
+ZIP_WITH_SOFTLINK_AND_PERMISSIONS = DATA / 'zip_with_softlink_and_permissions.zip'
+ZIP_SLIP = DATA / 'zip-slip.zip'
+ZIP_SLIP_WIN = DATA / 'zip-slip-win.zip'
 
 NOSE_SPEC_DEPEND = """\
 metadata_version = '1.1'
