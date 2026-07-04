@@ -280,7 +280,7 @@ class ZipFile(zipfile.ZipFile):
         altsep = os.altsep
         arcname = arcname.replace('/', sep)
         if altsep:
-            path = arcname.replace(altsep, sep)
+            arcname = arcname.replace(altsep, sep)
 
         # interpret absolute pathname as relative, remove drive letter or
         # UNC path, redundant separators, "." and ".." components.
