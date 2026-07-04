@@ -554,10 +554,10 @@ class TestZipFile(unittest.TestCase):
     @skip_unless_symlink
     def test_refuse_to_write_symlink_outside_target(self):
         # Given
-        tempdir = self.tempdir
-        myzipfile = os.path.join(tempdir, "foo.zip")
-        real_file = os.path.join(tempdir, "foo.txt")
-        symlink = os.path.join(tempdir, "symlink")
+        tempdir = Path(self.tempdir)
+        myzipfile = tempdir / "foo.zip"
+        real_file = tempdir / "foo.txt"
+        symlink = tempdir / "symlink"
         with open(real_file, "wb") as fp:
             fp.write(b"data")
         os.symlink(f'{tempdir}/../foo.txt', symlink)
@@ -566,7 +566,7 @@ class TestZipFile(unittest.TestCase):
             zp.write(real_file, "foo.txt")
 
         # Given
-        extract_dir = os.path.join(tempdir, "to")
+        extract_dir = tempdir / "to"
         os.makedirs(extract_dir)
 
         # When
@@ -575,7 +575,7 @@ class TestZipFile(unittest.TestCase):
                 zp.extractall(extract_dir)
 
         self.assertEqual(
-            f'link to /tmp/foo.txt outside of {extract_dir}',
+            f'link to {tempdir.parent}/foo.txt outside of {extract_dir}',
             str(context.exception))
 
     @skip_unless_symlink
