@@ -1,21 +1,21 @@
+import os
+import io
+import sys
+import stat
 import errno
 import hashlib
-import os
 import os.path
-import stat
-import sys
-import tempfile
 import zipfile
 import unittest
-import io
-
+import tempfile
+from pathlib import Path
 
 from zipfile2 import (
     PERMS_PRESERVE_SAFE, PERMS_PRESERVE_ALL, ZipFile)
 from .common import (
     NOSE_EGG, VTK_EGG, ZIP_WITH_DIRECTORY_SOFTLINK, ZIP_WITH_SOFTLINK,
     ZIP_WITH_PERMISSIONS, ZIP_WITH_SOFTLINK_AND_PERMISSIONS,
-    skip_unless_symlink, repeat_rmtree)
+    skip_unless_symlink, repeat_rmtree, ZIP_SLIP, ZIP_SLIP_WIN)
 
 
 HERE = os.path.dirname(__file__)
@@ -66,13 +66,12 @@ def create_broken_symlink(link):
 
 
 class TestZipFile(unittest.TestCase):
+
     def setUp(self):
         self.tempdir = tempfile.mkdtemp()
         self.tempdir2 = tempfile.mkdtemp()
-
-    def tearDown(self):
-        repeat_rmtree(self.tempdir2)
-        repeat_rmtree(self.tempdir)
+        self.addCleanup(repeat_rmtree, self.tempdir)
+        self.addCleanup(repeat_rmtree, self.tempdir2)
 
     def test_simple(self):
         # Given
@@ -290,30 +289,31 @@ class TestZipFile(unittest.TestCase):
         zipfile = os.path.join(self.tempdir, "foo.zip")
         real_file = os.path.join(self.tempdir, "foo.txt")
         symlink = os.path.join(self.tempdir, "symlink")
-
         with open(real_file, "wb") as fp:
             fp.write(b"data")
-        os.symlink(real_file, symlink)
-
-        extract_dir = os.path.join(self.tempdir, "to")
-        os.makedirs(extract_dir)
-
-        r_real_file = os.path.join(extract_dir, "foo.txt")
-        r_symlink = os.path.join(extract_dir, "symlink")
+        os.symlink('foo.txt', symlink)
 
         # When
         with ZipFile(zipfile, "w") as zp:
             zp.write(symlink, "symlink")
             zp.write(real_file, "foo.txt")
 
-        with ZipFile(zipfile) as zp:
-            zp.extractall(extract_dir)
-
         # Then
         with ZipFile(zipfile) as zp:
             self.assertEqual(len(zp.namelist()), 2)
             self.assertCountEqual(zp.namelist(), ("foo.txt", "symlink"))
 
+        # Given
+        extract_dir = os.path.join(self.tempdir, "to")
+        os.makedirs(extract_dir)
+        r_real_file = os.path.join(extract_dir, "foo.txt")
+        r_symlink = os.path.join(extract_dir, "symlink")
+
+        # When
+        with ZipFile(zipfile) as zp:
+            zp.extractall(extract_dir)
+
+        # Then
         self.assertFalse(os.path.islink(r_real_file))
         self.assertTrue(os.path.islink(r_symlink))
         self.assertTrue(os.readlink(r_symlink), r_real_file)
@@ -328,26 +328,27 @@ class TestZipFile(unittest.TestCase):
         os.makedirs(os.path.dirname(real_file))
         with open(real_file, "wb") as fp:
             fp.write(b"/* header */")
-        os.symlink(os.path.dirname(real_file), symlink)
-
-        extract_dir = os.path.join(self.tempdir, "to")
-        os.makedirs(extract_dir)
-
-        r_real_file = os.path.join(extract_dir, "include", "foo.h")
-        r_symlink = os.path.join(extract_dir, "HEADERS")
+        os.symlink('include', symlink)
 
         # When
         with ZipFile(zipfile, "w") as zp:
             zp.write(symlink, "HEADERS")
             zp.write(real_file, "include/foo.h")
 
-        with ZipFile(zipfile) as zp:
-            zp.extractall(extract_dir)
-
         # Then
         with ZipFile(zipfile) as zp:
             self.assertEqual(len(zp.namelist()), 2)
             self.assertCountEqual(zp.namelist(), ("include/foo.h", "HEADERS"))
+
+        # Given
+        extract_dir = os.path.join(self.tempdir, "to")
+        os.makedirs(extract_dir)
+        r_real_file = os.path.join(extract_dir, "include", "foo.h")
+        r_symlink = os.path.join(extract_dir, "HEADERS")
+
+        # When
+        with ZipFile(zipfile) as zp:
+            zp.extractall(extract_dir)
 
         self.assertFalse(os.path.islink(r_real_file))
         self.assertTrue(os.path.islink(r_symlink))
@@ -530,6 +531,79 @@ class TestZipFile(unittest.TestCase):
             os.path.exists(f)
             with open(f, "rb") as fp:
                 self.assertEqual(fp.read(), b"yolo")
+
+    def test_zip_slip(self):
+        # Given
+        if sys.platform == "win32":
+            path = ZIP_SLIP_WIN
+        else:
+            path = ZIP_SLIP
+
+        # When
+        with ZipFile(path) as zp:
+            zp.extractall(self.tempdir)
+
+        # Then
+        self.assertFalse(
+            Path('/tmp/evil.txt').exists(),
+            msg="/tmp/evil.txt file found")
+
+    @skip_unless_symlink
+    def test_refuse_to_write_symlink_outside_target(self):
+        # Given
+        tempdir = Path(self.tempdir)
+        myzipfile = tempdir / "foo.zip"
+        real_file = tempdir / "foo.txt"
+        symlink = tempdir / "symlink"
+        with open(real_file, "wb") as fp:
+            fp.write(b"data")
+        os.symlink(f'{tempdir}/../foo.txt', symlink)
+        with ZipFile(myzipfile, "w") as zp:
+            zp.write(symlink, "symlink")
+            zp.write(real_file, "foo.txt")
+
+        # Given
+        extract_dir = tempdir / "to"
+        os.makedirs(extract_dir)
+
+        # When
+        with self.assertRaises(zipfile.BadZipFile) as context:
+            with ZipFile(myzipfile) as zp:
+                zp.extractall(extract_dir)
+
+        self.assertEqual(
+            f'link to {tempdir.parent}/foo.txt outside of {extract_dir}',
+            str(context.exception))
+
+    @skip_unless_symlink
+    def test_refuse_write_symlink_directory(self):
+        # Given
+        tempdir = Path(self.tempdir)
+        myzipfile = tempdir / "foo.zip"
+        real_file = tempdir / "include" / "foo.h"
+        symlink = tempdir / "HEADERS"
+
+        os.makedirs(real_file.parent)
+        with open(real_file, "wb") as fp:
+            fp.write(b"/* header */")
+        os.symlink('../include', symlink)
+
+        with ZipFile(myzipfile, "w") as zp:
+            zp.write(symlink, "HEADERS")
+            zp.write(real_file, "include/foo.h")
+
+        # Given
+        extract_dir = Path(tempdir, "to")
+        os.makedirs(extract_dir)
+
+        # When
+        with self.assertRaises(zipfile.BadZipFile) as context:
+            with ZipFile(myzipfile) as zp:
+                zp.extractall(extract_dir)
+
+        self.assertEqual(
+            f'link to {tempdir}/include outside of {extract_dir}',
+            str(context.exception))
 
 
 class TestsPermissionExtraction(unittest.TestCase):
