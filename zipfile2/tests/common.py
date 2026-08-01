@@ -11,7 +11,8 @@ VTK_EGG = DATA / 'vtk.egg'
 ZIP_WITH_SOFTLINK = DATA / 'zip_with_softlink.zip'
 ZIP_WITH_DIRECTORY_SOFTLINK = DATA / 'zip_with_directory_softlink.zip'
 ZIP_WITH_PERMISSIONS = DATA / 'zip_with_permissions.zip'
-ZIP_WITH_SOFTLINK_AND_PERMISSIONS = DATA / 'zip_with_softlink_and_permissions.zip'
+ZIP_WITH_SOFTLINK_AND_PERMISSIONS = (
+    DATA / 'zip_with_softlink_and_permissions.zip')
 ZIP_SLIP = DATA / 'zip-slip.zip'
 ZIP_SLIP_WIN = DATA / 'zip-slip-win.zip'
 
