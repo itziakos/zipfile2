@@ -81,7 +81,6 @@ class ZipFile(zipfile.ZipFile):
 
         self._invalid_path_parts = ('', os.path.curdir, os.path.pardir)
 
-
     def add_tree(self, directory, include_top=False):
         """ Zip the given directory into this archive, by walking into it.
 
@@ -299,7 +298,7 @@ class ZipFile(zipfile.ZipFile):
         arcname = os.path.join(targetpath, arcname)
         arcname = os.path.normpath(arcname)
         if os.path.commonpath([arcname, targetpath]) != targetpath:
-            raise BadZipFile(f"{arcname} outside of {targetpath}")
+            raise zipfile.BadZipFile(f"{arcname} outside of {targetpath}")
         return arcname
 
     def _sanitize_symlink(self, source, targetpath, isdir):
@@ -319,7 +318,8 @@ class ZipFile(zipfile.ZipFile):
         sourcepath = os.path.join(targetpath, source)
         sourcepath = os.path.normpath(sourcepath)
         if os.path.commonpath([sourcepath, targetpath]) != targetpath:
-            raise zipfile.BadZipFile(f"link to {sourcepath} outside of {targetpath}")
+            raise zipfile.BadZipFile(
+                f"link to {sourcepath} outside of {targetpath}")
         return source
 
 

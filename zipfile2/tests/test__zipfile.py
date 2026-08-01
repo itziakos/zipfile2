@@ -293,7 +293,6 @@ class TestZipFile(unittest.TestCase):
             fp.write(b"data")
         os.symlink('foo.txt', symlink)
 
-
         # When
         with ZipFile(zipfile, "w") as zp:
             zp.write(symlink, "symlink")
@@ -331,7 +330,6 @@ class TestZipFile(unittest.TestCase):
             fp.write(b"/* header */")
         os.symlink('include', symlink)
 
-
         # When
         with ZipFile(zipfile, "w") as zp:
             zp.write(symlink, "HEADERS")
@@ -347,7 +345,6 @@ class TestZipFile(unittest.TestCase):
         os.makedirs(extract_dir)
         r_real_file = os.path.join(extract_dir, "include", "foo.h")
         r_symlink = os.path.join(extract_dir, "HEADERS")
-
 
         # When
         with ZipFile(zipfile) as zp:
@@ -579,7 +576,7 @@ class TestZipFile(unittest.TestCase):
             str(context.exception))
 
     @skip_unless_symlink
-    def test_write_symlink_directory(self):
+    def test_refuse_write_symlink_directory(self):
         # Given
         tempdir = Path(self.tempdir)
         myzipfile = tempdir / "foo.zip"
@@ -589,7 +586,7 @@ class TestZipFile(unittest.TestCase):
         os.makedirs(real_file.parent)
         with open(real_file, "wb") as fp:
             fp.write(b"/* header */")
-        os.symlink(f'../include', symlink)
+        os.symlink('../include', symlink)
 
         with ZipFile(myzipfile, "w") as zp:
             zp.write(symlink, "HEADERS")
